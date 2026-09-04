@@ -1,4 +1,5 @@
 import indiaSvgData from './indiaSvgData.json';
+import realIndiaStatesGeoJson from './indiaStatesGeoJson.json';
 
 // National FRA Summary
 export const NATIONAL_SUMMARY = {
@@ -558,19 +559,15 @@ export const MOCK_CLAIMS = [
 
 export const INDIA_STATES_GEOJSON = {
   type: "FeatureCollection",
-  features: ALL_INDIA_STATES.map(s => ({
-    type: "Feature",
-    id: s.id,
-    properties: s,
-    geometry: {
-      type: "Polygon",
-      coordinates: [
-        [
-          [74.5, 22.0], [75.8, 21.6], [78.5, 21.4], [80.7, 21.7],
-          [82.0, 22.5], [82.8, 23.9], [81.8, 25.1], [79.9, 25.4],
-          [74.5, 22.0]
-        ]
-      ]
-    }
-  }))
+  features: realIndiaStatesGeoJson.features.map(f => {
+    const matchedState = ALL_INDIA_STATES.find(s => s.id === f.id || s.code === f.properties?.code);
+    return {
+      ...f,
+      id: matchedState ? matchedState.id : f.id,
+      properties: {
+        ...(matchedState || {}),
+        ...f.properties
+      }
+    };
+  })
 };
