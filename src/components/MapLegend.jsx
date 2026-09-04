@@ -1,5 +1,5 @@
 import React from 'react';
-import { Layers, Filter } from 'lucide-react';
+import { Layers, AlertTriangle, CheckCircle2, ShieldCheck, Flame } from 'lucide-react';
 
 export default function MapLegend({
   statusFilter,
@@ -8,21 +8,23 @@ export default function MapLegend({
   totalClaims
 }) {
   return (
-    <div className="absolute bottom-6 left-6 z-[1000] bg-slate-900/90 backdrop-blur-md border border-slate-700/80 rounded-xl shadow-2xl p-3 text-xs select-none">
-      <div className="flex items-center justify-between gap-3 mb-2 pb-1.5 border-b border-slate-800">
+    <div className="absolute bottom-6 left-6 z-[1000] bg-slate-900/95 backdrop-blur-md border border-slate-700/80 rounded-xl shadow-2xl p-3 text-xs select-none max-w-xs space-y-2">
+      {/* Header */}
+      <div className="flex items-center justify-between gap-3 pb-1.5 border-b border-slate-800">
         <div className="flex items-center gap-1.5 font-bold text-slate-200">
           <Layers className="w-3.5 h-3.5 text-emerald-400" />
-          <span>Claims Status Filter</span>
+          <span>Claims & Anomaly Layer</span>
         </div>
         <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-800 text-slate-300">
           {claimsCount} plotted
         </span>
       </div>
 
-      <div className="flex items-center gap-1.5">
+      {/* Filter buttons */}
+      <div className="flex flex-wrap items-center gap-1">
         <button
           onClick={() => setStatusFilter('all')}
-          className={`px-2 py-1 rounded-lg border text-[11px] font-medium transition ${
+          className={`px-2 py-0.5 rounded-lg border text-[10px] font-medium transition ${
             statusFilter === 'all'
               ? 'bg-indigo-600 border-indigo-500 text-white'
               : 'bg-slate-800/60 border-slate-700 text-slate-300 hover:bg-slate-800'
@@ -33,7 +35,7 @@ export default function MapLegend({
 
         <button
           onClick={() => setStatusFilter('approved')}
-          className={`flex items-center gap-1 px-2 py-1 rounded-lg border text-[11px] font-medium transition ${
+          className={`flex items-center gap-1 px-2 py-0.5 rounded-lg border text-[10px] font-medium transition ${
             statusFilter === 'approved'
               ? 'bg-emerald-500/25 border-emerald-500 text-emerald-300'
               : 'bg-slate-800/60 border-slate-700 text-slate-300 hover:bg-slate-800'
@@ -45,7 +47,7 @@ export default function MapLegend({
 
         <button
           onClick={() => setStatusFilter('pending')}
-          className={`flex items-center gap-1 px-2 py-1 rounded-lg border text-[11px] font-medium transition ${
+          className={`flex items-center gap-1 px-2 py-0.5 rounded-lg border text-[10px] font-medium transition ${
             statusFilter === 'pending'
               ? 'bg-amber-500/25 border-amber-500 text-amber-300'
               : 'bg-slate-800/60 border-slate-700 text-slate-300 hover:bg-slate-800'
@@ -57,7 +59,7 @@ export default function MapLegend({
 
         <button
           onClick={() => setStatusFilter('delayed')}
-          className={`flex items-center gap-1 px-2 py-1 rounded-lg border text-[11px] font-medium transition ${
+          className={`flex items-center gap-1 px-2 py-0.5 rounded-lg border text-[10px] font-medium transition ${
             statusFilter === 'delayed'
               ? 'bg-rose-500/30 border-rose-500 text-rose-300 ring-1 ring-rose-500/50'
               : 'bg-slate-800/60 border-slate-700 text-slate-300 hover:bg-slate-800'
