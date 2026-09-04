@@ -69,6 +69,15 @@ export default function MapLegend({
           Delayed
         </button>
       </div>
+
+      {/* Cadastral parcel indicator */}
+      <div className="pt-1.5 border-t border-slate-800 flex items-center justify-between text-[10px] text-slate-400">
+        <span className="flex items-center gap-1.5">
+          <span className="w-2.5 h-2.5 border border-dashed border-emerald-400 bg-emerald-500/20 rounded-sm inline-block"></span>
+          <span>Cadastral Boundary</span>
+        </span>
+        <span className="text-[9px] text-slate-500">Zoom in for plots</span>
+      </div>
     </div>
   );
 }
