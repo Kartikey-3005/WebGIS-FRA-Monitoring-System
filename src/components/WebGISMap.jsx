@@ -4,6 +4,7 @@ import {
   TileLayer, 
   GeoJSON, 
   CircleMarker, 
+  Polygon,
   Popup, 
   useMap 
 } from 'react-leaflet';
@@ -33,7 +34,8 @@ function MapController({ selectedState, resetTrigger, activeClaim }) {
 
   useEffect(() => {
     if (activeClaim && activeClaim.coordinates) {
-      map.flyTo(activeClaim.coordinates, 10, {
+      // Zoom directly into the cadastral plot parcel boundary
+      map.flyTo(activeClaim.coordinates, 15, {
         animate: true,
         duration: 1.2
       });
@@ -66,6 +68,7 @@ export default function WebGISMap({
 }) {
   const [statusFilter, setStatusFilter] = useState('all');
   const [baseLayer, setBaseLayer] = useState('satellite'); // 'satellite' | 'topo' | 'osm'
+  const [showParcels, setShowParcels] = useState(true);
   const [anomalyDistrictsGeoJson, setAnomalyDistrictsGeoJson] = useState(null);
   const geoJsonRef = useRef(null);
   const districtGeoJsonRef = useRef(null);
@@ -328,6 +331,23 @@ export default function WebGISMap({
 
           return (
             <React.Fragment key={claimId}>
+              {/* Authentic Cadastral Land Parcel Boundary Polygon */}
+              {showParcels && claim.plot_polygon && (
+                <Polygon
+                  positions={claim.plot_polygon}
+                  eventHandlers={{
+                    click: () => onSelectClaim && onSelectClaim(claim)
+                  }}
+                  pathOptions={{
+                    color: isCurrentActive ? '#38bdf8' : colors.fill,
+                    weight: isCurrentActive ? 3.5 : 2,
+                    fillColor: colors.fill,
+                    fillOpacity: isCurrentActive ? 0.45 : 0.22,
+                    dashArray: isCurrentActive ? undefined : '4, 4'
+                  }}
+                />
+              )}
+
               {/* Outer pulsing ring for critical anomaly / actively inspected claims */}
               {(colors.pulse || isCurrentActive) && (
                 <CircleMarker
@@ -393,6 +413,17 @@ export default function WebGISMap({
                       {claim.claimant_name || claim.claimantName || 'Tribal Claimant'}
                     </p>
 
+                    {/* Cadastral Area & Georeference Badge */}
+                    <div className="flex items-center justify-between text-[10px] text-slate-300 mb-1.5 px-2 py-1 rounded bg-slate-900/90 border border-slate-800">
+                      <span className="text-slate-400 flex items-center gap-1">
+                        <Layers className="w-3 h-3 text-emerald-400" />
+                        Cadastral Parcel:
+                      </span>
+                      <span className="font-bold text-emerald-300 font-mono">
+                        {claim.area_ha || claim.areaHa || 2.0} Ha <span className="text-slate-500 font-normal">({Math.round((claim.area_ha || claim.areaHa || 2.0) * 10000).toLocaleString()} m²)</span>
+                      </span>
+                    </div>
+
                     <div className="grid grid-cols-2 gap-1 text-[10px] mb-1.5">
                       <div className="bg-slate-900/80 p-1.5 rounded border border-slate-800">
                         <span className="text-slate-400 block text-[9px]">District</span>
@@ -444,7 +475,7 @@ export default function WebGISMap({
         })}
       </MapContainer>
 
-      {/* Top-Left: Central View Button */}
+      {/* Top-Left: Central View & Cadastral Parcels Toggle */}
       <div className="absolute top-5 left-5 z-[1000] flex items-center gap-2">
         <button
           onClick={onResetAllIndia}
@@ -453,6 +484,20 @@ export default function WebGISMap({
         >
           <RotateCcw className="w-3.5 h-3.5 text-emerald-400" />
           <span>Central View</span>
+        </button>
+
+        <button
+          onClick={() => setShowParcels(prev => !prev)}
+          className={`backdrop-blur-md border rounded-xl px-3 py-1.5 text-xs font-semibold flex items-center gap-1.5 shadow-xl transition ${
+            showParcels
+              ? 'bg-emerald-950/80 border-emerald-500/60 text-emerald-300'
+              : 'bg-slate-900/90 border-slate-700/80 text-slate-400 hover:text-white'
+          }`}
+          title="Toggle Cadastral Land Parcel Boundaries"
+        >
+          <Layers className="w-3.5 h-3.5 text-emerald-400" />
+          <span>Cadastral Parcels</span>
+          <span className={`w-1.5 h-1.5 rounded-full ${showParcels ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'}`} />
         </button>
       </div>
 
