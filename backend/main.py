@@ -26,9 +26,9 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
 
 if GEMINI_AVAILABLE and GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
-    print("✅ Google Generative AI configured with API key.")
+    print("[OK] Google Generative AI configured with API key.")
 else:
-    print("⚠️ GEMINI_API_KEY not found or google-generativeai not installed. Fallback analyzer will be used.")
+    print("[INFO] GEMINI_API_KEY not found or google-generativeai not installed. Fallback analyzer active.")
 
 # Initialize FastAPI App
 app = FastAPI(
@@ -376,7 +376,7 @@ def analyze_district(district_id: str):
                 report_text = generate_fallback_analysis(district_name, stats)
                 ai_engine = "Fallback Rules Engine (Empty Gemini Response)"
         except Exception as e:
-            print(f"⚠️ Gemini API Call encountered an issue: {e}")
+            print(f"[WARN] Gemini API Call issue: {e}")
             try:
                 # Secondary model attempt
                 model_alt = genai.GenerativeModel("gemini-pro")
@@ -384,7 +384,7 @@ def analyze_district(district_id: str):
                 report_text = response_alt.text.strip()
                 ai_engine = "Gemini-Pro"
             except Exception as e2:
-                print(f"⚠️ Secondary model attempt failed: {e2}. Using intelligent fallback.")
+                print(f"[WARN] Secondary model attempt failed: {e2}. Using intelligent fallback.")
                 report_text = generate_fallback_analysis(district_name, stats)
                 ai_engine = "Internal Decision Support Engine"
     else:
