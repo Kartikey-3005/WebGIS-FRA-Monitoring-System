@@ -151,17 +151,6 @@ export default function IndiaVectorMap({
         </button>
       </div>
 
-      {/* Watermark in background when isolated state is active */}
-      {selectedState && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none opacity-5 select-none">
-          <span className="text-8xl md:text-9xl font-black text-white tracking-widest uppercase">
-            {selectedState.code}
-          </span>
-          <span className="text-2xl font-bold text-white tracking-wider">
-            {selectedState.name}
-          </span>
-        </div>
-      )}
 
       {/* Main SVG Map */}
       <svg
