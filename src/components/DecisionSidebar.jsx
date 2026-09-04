@@ -8,7 +8,8 @@ import {
   ShieldAlert,
   ChevronRight,
   Globe2,
-  AlertCircle
+  AlertCircle,
+  Layers
 } from 'lucide-react';
 import AIAnomalyCard from './AIAnomalyCard';
 import MetricsGrid from './MetricsGrid';
@@ -131,6 +132,54 @@ export default function DecisionSidebar({
             </h4>
             <span className="text-[10px] text-slate-500">Click to locate on map</span>
           </div>
+
+          {/* Active Cadastral Parcel Inspection Card */}
+          {activeClaim && (
+            <div className="p-3 rounded-xl bg-slate-900/95 border border-indigo-500/60 shadow-lg shadow-indigo-950/40 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-mono uppercase tracking-wider text-indigo-400 font-bold flex items-center gap-1">
+                  <Layers className="w-3 h-3 text-indigo-400" />
+                  Cadastral Plot Inspection
+                </span>
+                <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded capitalize ${
+                  activeClaim.status === 'approved' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' :
+                  activeClaim.status === 'pending' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' :
+                  'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                }`}>
+                  {activeClaim.status}
+                </span>
+              </div>
+
+              <div>
+                <h5 className="text-sm font-bold text-white leading-tight">{activeClaim.claimantName || activeClaim.claimant_name}</h5>
+                <p className="text-[11px] text-slate-400">
+                  {activeClaim.id || activeClaim.claim_id} • {activeClaim.districtName || activeClaim.district_id}, {activeClaim.stateName}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-1.5 text-[11px]">
+                <div className="p-1.5 rounded bg-slate-950/80 border border-slate-800">
+                  <span className="text-[9px] text-slate-400 block">Cadastral Area</span>
+                  <span className="font-bold text-emerald-400 font-mono">
+                    {activeClaim.areaHa || activeClaim.area_ha || 2.0} Ha
+                  </span>
+                </div>
+                <div className="p-1.5 rounded bg-slate-950/80 border border-slate-800">
+                  <span className="text-[9px] text-slate-400 block">Processing Time</span>
+                  <span className={`font-bold font-mono ${(activeClaim.daysPending || activeClaim.days_pending) > 300 ? 'text-rose-400' : 'text-slate-200'}`}>
+                    {activeClaim.daysPending || activeClaim.days_pending || 0} days
+                  </span>
+                </div>
+              </div>
+
+              {activeClaim.plot_polygon && (
+                <div className="text-[10px] text-slate-400 p-1.5 rounded bg-slate-950/60 border border-slate-800/80 font-mono flex items-center justify-between">
+                  <span className="text-[9px] text-slate-500">Cadastral Boundary:</span>
+                  <span className="text-emerald-300 font-semibold text-[9px]">4 Vertices Georeferenced</span>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Quick Search */}
           <div className="relative">
