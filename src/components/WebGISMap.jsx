@@ -92,20 +92,43 @@ export default function WebGISMap({
   });
 
   // Dynamic Polygon Styling (Clean borders without dark masks)
+  // Dynamic Polygon Styling (Clean borders without dark masks)
   const getStateStyle = (feature) => {
-    const isSelected = selectedState && selectedState.id === feature.properties.id;
-    const isCritical = feature.properties.aiAnalysis?.severity === 'critical';
+    const isSelected = selectedState && (
+      selectedState.id === feature.id || 
+      selectedState.id === feature.properties?.id ||
+      selectedState.code === feature.properties?.code
+    );
+    const isCritical = feature.properties?.aiAnalysis?.severity === 'critical';
 
-    // On satellite layer, keep fill subtle so real forest imagery is visible
+    if (selectedState) {
+      if (isSelected) {
+        return {
+          fillColor: '#2563eb',
+          fillOpacity: 0.22,
+          color: '#60a5fa',
+          weight: 2.8,
+          dashArray: '3, 3',
+          opacity: 1,
+        };
+      }
+      return {
+        fillColor: '#000000',
+        fillOpacity: 0,
+        color: '#ffffff',
+        weight: 0.5,
+        opacity: 0.25,
+      };
+    }
+
+    // Default Pan-India View (Clean transparent satellite viewing)
     return {
-      fillColor: isSelected 
-        ? '#3b82f6' 
-        : (isCritical ? '#f43f5e' : '#10b981'),
-      fillOpacity: isSelected ? 0.35 : 0.08,
-      color: isSelected ? '#60a5fa' : '#ffffff',
-      weight: isSelected ? 3 : 1.5,
-      dashArray: isSelected ? '4, 4' : '2, 2',
-      opacity: 0.9,
+      fillColor: isCritical ? '#f43f5e' : '#10b981',
+      fillOpacity: 0.03,
+      color: '#ffffff',
+      weight: 0.9,
+      dashArray: '2, 2',
+      opacity: 0.65,
     };
   };
 
@@ -117,9 +140,9 @@ export default function WebGISMap({
       mouseover: (e) => {
         const target = e.target;
         target.setStyle({
-          fillOpacity: 0.35,
-          weight: 3,
-          color: '#ffffff'
+          fillOpacity: 0.25,
+          weight: 2.5,
+          color: '#38bdf8'
         });
       },
       mouseout: (e) => {
@@ -180,6 +203,7 @@ export default function WebGISMap({
 
         {/* State Boundaries GeoJSON Layer (State names permanently removed from map) */}
         <GeoJSON
+          key={`states-geojson-${selectedState ? selectedState.id : 'all'}`}
           ref={geoJsonRef}
           data={statesGeoJson}
           style={getStateStyle}
