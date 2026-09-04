@@ -1,5 +1,6 @@
 import indiaSvgData from './indiaSvgData.json';
 import realIndiaStatesGeoJson from './indiaStatesGeoJson.json';
+import curatedClaimsGeoJson from '../../backend/data/claims.json';
 
 // National FRA Summary
 export const NATIONAL_SUMMARY = {
@@ -51,6 +52,30 @@ const STATE_STATS_OVERLAY = {
       recommendation: "Deploy district-level mobile GIS survey units to clear 42,000 pending geotagging verifications before the next review cycle.",
       confidenceScore: 95.0,
       riskIndex: "High (Score: 8.2/10)"
+    }
+  },
+  INUT: {
+    totalClaims: 78500,
+    approvedClaims: 31200,
+    pendingClaims: 38400,
+    delayedClaims: 22100,
+    approvalRate: 39.7,
+    titledLandHa: 86400,
+    totalForestAreaHa: 2430500,
+    tribes: "Van Gujjar, Jaunsari, Bhotia, Tharu, Buksa",
+    center: [30.1, 79.2],
+    zoom: 8,
+    aiAnalysis: {
+      severity: "warning",
+      anomalyHeadline: "Pastoral Rights & Sanctuary Buffer Disputes",
+      summary: "⚠️ Transhumant Pastoral Delay: Over 22,000 customary pastoral grazing claims of Van Gujjars in Rajaji and Corbett Tiger Reserve buffer zones face procedural verification halts at the Sub-Divisional (SDLC) level.",
+      rootCauses: [
+        "Traditional seasonal transhumance routes overlap with core protected wildlife zones.",
+        "Delays in joint Gram Sabha boundary demarcation between Revenue and Forest departments."
+      ],
+      recommendation: "Establish mobile SDLC verification units across Garhwal & Kumaon divisions to expedite customary grazing rights recognition.",
+      confidenceScore: 93.4,
+      riskIndex: "Moderate (Score: 6.2/10)"
     }
   },
   INOR: {
@@ -296,16 +321,88 @@ export const ALL_INDIA_STATES = indiaSvgData.map(s => {
     }
   };
 
+  const stateCenters = {
+    INUT: [30.1, 79.2],
+    INHP: [31.8, 77.2],
+    INJK: [33.8, 75.0],
+    INMP: [23.5, 78.5],
+    INMH: [19.5, 76.0],
+    INOR: [20.5, 84.5],
+    INCT: [21.5, 82.0],
+    INJH: [23.6, 85.3],
+    INGJ: [22.3, 71.5],
+    INRJ: [26.5, 74.0],
+    INTG: [17.8, 79.0],
+    INAP: [15.9, 79.7],
+    INKA: [15.3, 75.7],
+    INKL: [10.5, 76.5],
+    INTN: [11.0, 78.5],
+    INAS: [26.2, 92.9],
+    INTR: [23.8, 91.8],
+    INWB: [23.0, 87.8],
+    INUP: [27.0, 80.8],
+    INBR: [25.6, 85.1],
+    INPB: [31.0, 75.4],
+    INHR: [29.0, 76.0],
+    INSK: [27.5, 88.5],
+    INAR: [28.2, 94.7],
+    INMN: [24.8, 93.9],
+    INMZ: [23.3, 92.8],
+    INNL: [26.1, 94.5],
+    INML: [25.5, 91.3],
+    INGA: [15.3, 74.0],
+  };
+
   return {
     ...s,
     ...overlay,
+    center: overlay.center || stateCenters[s.id] || [22.0, 79.5],
+    zoom: overlay.zoom || 7,
     // ensure name is clean
-    name: s.name === "Orissa" ? "Odisha" : s.name
+    name: s.name === "Orissa" ? "Odisha" : (s.name === "Uttaranchal" || s.id === "INUT" || s.code === "UT") ? "Uttarakhand" : s.name
+  };
+});
+
+// Curated Anomaly Claims from backend/data/claims.json
+export const CURATED_ANOMALY_CLAIMS = (curatedClaimsGeoJson?.features || []).map(feat => {
+  const p = feat.properties;
+  const coords = feat.geometry.coordinates; // [lon, lat]
+  const stateId = p.district_id === 'dist_c' ? 'INCT' : 'INMP';
+  const stateName = p.district_id === 'dist_c' ? 'Chhattisgarh' : 'Madhya Pradesh';
+  const districtMap = {
+    dist_a: 'District A (Dindori)',
+    dist_b: 'District B (Mandla)',
+    dist_c: 'District C (Korba)',
+    dist_d: 'District D (Balaghat)'
+  };
+  return {
+    id: p.claim_id,
+    claim_id: p.claim_id,
+    district_id: p.district_id,
+    stateId,
+    stateName,
+    districtName: districtMap[p.district_id] || p.district_id,
+    claimant_type: p.claimant_type,
+    claimantName: p.claimant_name || 'FRA Tribal Claimant',
+    tribe: p.district_id === 'dist_a' ? 'Baiga (PVTG)' : p.district_id === 'dist_c' ? 'Korwa (PVTG)' : 'Gond',
+    type: (p.claimant_type || 'individual').toLowerCase(),
+    status: p.status,
+    days_pending: p.days_pending,
+    daysPending: p.days_pending,
+    area_ha: p.area_ha || 2.0,
+    areaHa: p.area_ha || 2.0,
+    vegetation_loss_index: p.vegetation_loss_index || 0,
+    vegetationLossIndex: p.vegetation_loss_index || 0,
+    anomaly_tags: p.anomaly_tags || [],
+    coordinates: [coords[1], coords[0]], // [lat, lon] for Leaflet
+    svgCoords: [400 + (coords[0] - 80) * 40, 500 + (coords[1] - 22) * 40],
+    isAnomaly: p.district_id !== 'dist_d'
   };
 });
 
 // Mock Claims for all regions
 export const MOCK_CLAIMS = [
+  ...CURATED_ANOMALY_CLAIMS,
   {
     id: "FRA-MP-001",
     stateId: "INMP",
@@ -554,6 +651,413 @@ export const MOCK_CLAIMS = [
     svgCoords: [760, 395],
     delayReason: "Jurisdictional dispute between Autonomous Council and Forest Dept.",
     isAnomaly: true
+  },
+  // --- UTTARAKHAND (INUT) ---
+  {
+    id: "FRA-UT-001",
+    stateId: "INUT",
+    stateName: "Uttarakhand",
+    districtName: "Chamoli",
+    claimantName: "Nanda Devi Bhotia CFR Committee",
+    tribe: "Bhotia",
+    gramSabha: "Joshimath High-Altitude Range",
+    type: "community",
+    status: "approved",
+    areaHa: 450.0,
+    daysPending: 160,
+    coordinates: [30.55, 79.56],
+    svgCoords: [415, 260],
+    isAnomaly: false
+  },
+  {
+    id: "FRA-UT-002",
+    stateId: "INUT",
+    stateName: "Uttarakhand",
+    districtName: "Uttarkashi",
+    claimantName: "Van Gujjar Pastoralist Collective",
+    tribe: "Van Gujjar",
+    gramSabha: "Govind Pashu Vihar Buffer",
+    type: "community",
+    status: "delayed",
+    areaHa: 380.0,
+    daysPending: 1220,
+    coordinates: [30.73, 78.44],
+    svgCoords: [395, 250],
+    delayReason: "Sanctuary buffer grazing tenure contested by Forest Dept.",
+    vegetation_loss_index: 0.08,
+    anomaly_tags: ["PASTORAL_RIGHTS_HALT"],
+    isAnomaly: true
+  },
+  {
+    id: "FRA-UT-003",
+    stateId: "INUT",
+    stateName: "Uttarakhand",
+    districtName: "Dehradun",
+    claimantName: "Jaunsari Gram Panchayat",
+    tribe: "Jaunsari",
+    gramSabha: "Chakrata Forest Block",
+    type: "individual",
+    status: "approved",
+    areaHa: 1.8,
+    daysPending: 140,
+    coordinates: [30.58, 77.85],
+    svgCoords: [380, 260],
+    isAnomaly: false
+  },
+  {
+    id: "FRA-UT-004",
+    stateId: "INUT",
+    stateName: "Uttarakhand",
+    districtName: "Pauri Garhwal",
+    claimantName: "Kalu Ram Buksa",
+    tribe: "Buksa",
+    gramSabha: "Kotdwar Foothill FRC",
+    type: "individual",
+    status: "pending",
+    daysPending: 310,
+    coordinates: [29.80, 78.85],
+    svgCoords: [410, 280],
+    vegetation_loss_index: 0.04,
+    anomaly_tags: ["SDLC_QUEUE_DELAY"],
+    isAnomaly: true
+  },
+
+  // --- HIMACHAL PRADESH (INHP) ---
+  {
+    id: "FRA-HP-001",
+    stateId: "INHP",
+    stateName: "Himachal Pradesh",
+    districtName: "Kinnaur",
+    claimantName: "Kalpa Forest Rights Collective",
+    tribe: "Kinnaura",
+    gramSabha: "Reckong Peo FRC",
+    type: "community",
+    status: "approved",
+    areaHa: 280.0,
+    daysPending: 175,
+    coordinates: [31.53, 78.25],
+    svgCoords: [370, 220],
+    isAnomaly: false
+  },
+  {
+    id: "FRA-HP-002",
+    stateId: "INHP",
+    stateName: "Himachal Pradesh",
+    districtName: "Chamba",
+    claimantName: "Gaddi Shepherd Union",
+    tribe: "Gaddi",
+    gramSabha: "Bharmour Alpine Meadow",
+    type: "community",
+    status: "delayed",
+    areaHa: 610.0,
+    daysPending: 1150,
+    coordinates: [32.55, 76.12],
+    svgCoords: [340, 180],
+    delayReason: "High-altitude pastureland rights stuck at DLC verification.",
+    isAnomaly: true
+  },
+
+  // --- KARNATAKA (INKA) ---
+  {
+    id: "FRA-KA-001",
+    stateId: "INKA",
+    stateName: "Karnataka",
+    districtName: "Chamarajanagar",
+    claimantName: "BR Hills Soliga CFR Collective",
+    tribe: "Soliga",
+    gramSabha: "Biligiriranga Hills FRC",
+    type: "community",
+    status: "approved",
+    areaHa: 520.0,
+    daysPending: 130,
+    coordinates: [11.92, 77.13],
+    svgCoords: [355, 810],
+    isAnomaly: false
+  },
+  {
+    id: "FRA-KA-002",
+    stateId: "INKA",
+    stateName: "Karnataka",
+    districtName: "Kodagu",
+    claimantName: "Jenu Kuruba Tribal Samiti",
+    tribe: "Jenu Kuruba (PVTG)",
+    gramSabha: "Nagarhole Buffer Zone",
+    type: "individual",
+    status: "delayed",
+    areaHa: 2.1,
+    daysPending: 990,
+    coordinates: [12.05, 76.15],
+    svgCoords: [335, 800],
+    delayReason: "National Park critical tiger habitat overlap dispute.",
+    isAnomaly: true
+  },
+
+  // --- TAMIL NADU (INTN) ---
+  {
+    id: "FRA-TN-001",
+    stateId: "INTN",
+    stateName: "Tamil Nadu",
+    districtName: "Nilgiris",
+    claimantName: "Toda & Kota CFR Collective",
+    tribe: "Toda (PVTG)",
+    gramSabha: "Ooty Shola Forest FRC",
+    type: "community",
+    status: "approved",
+    areaHa: 340.0,
+    daysPending: 195,
+    coordinates: [11.41, 76.70],
+    svgCoords: [345, 845],
+    isAnomaly: false
+  },
+  {
+    id: "FRA-TN-002",
+    stateId: "INTN",
+    stateName: "Tamil Nadu",
+    districtName: "Erode",
+    claimantName: "Sathyamangalam Sholaga Sabha",
+    tribe: "Sholaga",
+    gramSabha: "Thalavadi Forest Range",
+    type: "community",
+    status: "delayed",
+    areaHa: 410.0,
+    daysPending: 1080,
+    coordinates: [11.52, 77.25],
+    svgCoords: [365, 850],
+    delayReason: "Sanctuary boundary demarcation pending SDLC joint inspection.",
+    isAnomaly: true
+  },
+
+  // --- KERALA (INKL) ---
+  {
+    id: "FRA-KL-002",
+    stateId: "INKL",
+    stateName: "Kerala",
+    districtName: "Idukki",
+    claimantName: "Muthuvan Tribal Sabha",
+    tribe: "Muthuvan",
+    gramSabha: "Anamudi Shola Buffer",
+    type: "community",
+    status: "approved",
+    areaHa: 190.0,
+    daysPending: 160,
+    coordinates: [10.15, 77.05],
+    svgCoords: [340, 895],
+    isAnomaly: false
+  },
+
+  // --- ANDHRA PRADESH (INAP) ---
+  {
+    id: "FRA-AP-001",
+    stateId: "INAP",
+    stateName: "Andhra Pradesh",
+    districtName: "Alluri Sitharama Raju",
+    claimantName: "Paderu Konda Reddi FRC",
+    tribe: "Konda Reddi (PVTG)",
+    gramSabha: "Araku Valley Forest",
+    type: "community",
+    status: "approved",
+    areaHa: 480.0,
+    daysPending: 170,
+    coordinates: [18.08, 82.66],
+    svgCoords: [510, 680],
+    isAnomaly: false
+  },
+
+  // --- TELANGANA (INTG) ---
+  {
+    id: "FRA-TG-002",
+    stateId: "INTG",
+    stateName: "Telangana",
+    districtName: "Adilabad",
+    claimantName: "Utnoor Gond Durbar Council",
+    tribe: "Gond",
+    gramSabha: "Indervelly Forest Area",
+    type: "community",
+    status: "delayed",
+    areaHa: 360.0,
+    daysPending: 980,
+    coordinates: [19.36, 78.78],
+    svgCoords: [415, 630],
+    delayReason: "Podu cultivation claim under inter-departmental verification.",
+    isAnomaly: true
+  },
+
+  // --- GUJARAT (INGJ) ---
+  {
+    id: "FRA-GJ-002",
+    stateId: "INGJ",
+    stateName: "Gujarat",
+    districtName: "Narmada",
+    claimantName: "Kevadia Tribal FRC",
+    tribe: "Bhil & Tadvi",
+    gramSabha: "Shoolpaneshwar Wildlife Sanctuary Range",
+    type: "community",
+    status: "delayed",
+    areaHa: 310.0,
+    daysPending: 1050,
+    coordinates: [21.87, 73.50],
+    svgCoords: [220, 500],
+    delayReason: "Tourism project corridor overlap.",
+    isAnomaly: true
+  },
+
+  // --- RAJASTHAN (INRJ) ---
+  {
+    id: "FRA-RJ-002",
+    stateId: "INRJ",
+    stateName: "Rajasthan",
+    districtName: "Udaipur",
+    claimantName: "Kotra Bhil Adhikar Manch",
+    tribe: "Bhil",
+    gramSabha: "Phulwari ki Nal Buffer",
+    type: "community",
+    status: "approved",
+    areaHa: 270.0,
+    daysPending: 220,
+    coordinates: [24.36, 73.18],
+    svgCoords: [240, 420],
+    isAnomaly: false
+  },
+
+  // --- ODISHA (INOR) ---
+  {
+    id: "FRA-OD-003",
+    stateId: "INOR",
+    stateName: "Odisha",
+    districtName: "Rayagada",
+    claimantName: "Niyamgiri Dongria Kondh Council",
+    tribe: "Dongria Kondh (PVTG)",
+    gramSabha: "Kurli Gram Sabha",
+    type: "community",
+    status: "approved",
+    areaHa: 780.0,
+    daysPending: 140,
+    coordinates: [19.16, 83.41],
+    svgCoords: [540, 620],
+    isAnomaly: false
+  },
+  {
+    id: "FRA-OD-004",
+    stateId: "INOR",
+    stateName: "Odisha",
+    districtName: "Keonjhar",
+    claimantName: "Juanga Pirha CFR Sabha",
+    tribe: "Juanga (PVTG)",
+    gramSabha: "Gonasika Forest Range",
+    type: "community",
+    status: "delayed",
+    areaHa: 320.0,
+    daysPending: 890,
+    coordinates: [21.63, 85.58],
+    svgCoords: [580, 520],
+    delayReason: "Mining conveyor buffer overlap disputed with Revenue dept.",
+    isAnomaly: true
+  },
+
+  // --- JHARKHAND (INJH) ---
+  {
+    id: "FRA-JH-002",
+    stateId: "INJH",
+    stateName: "Jharkhand",
+    districtName: "Gumla",
+    claimantName: "Bishunpur Oraon FRC",
+    tribe: "Oraon",
+    gramSabha: "Netarhat Foothills",
+    type: "community",
+    status: "approved",
+    areaHa: 390.0,
+    daysPending: 210,
+    coordinates: [23.04, 84.54],
+    svgCoords: [530, 470],
+    isAnomaly: false
+  },
+  {
+    id: "FRA-JH-003",
+    stateId: "INJH",
+    stateName: "Jharkhand",
+    districtName: "Dumka",
+    claimantName: "Santhal Pargana Forest Rights Collective",
+    tribe: "Santhal",
+    gramSabha: "Masanjore Forest Range",
+    type: "individual",
+    status: "delayed",
+    areaHa: 2.3,
+    daysPending: 1120,
+    coordinates: [24.27, 87.25],
+    svgCoords: [580, 440],
+    delayReason: "Pradhani system land ownership record ambiguity.",
+    isAnomaly: true
+  },
+
+  // --- WEST BENGAL (INWB) ---
+  {
+    id: "FRA-WB-001",
+    stateId: "INWB",
+    stateName: "West Bengal",
+    districtName: "Alipurduar",
+    claimantName: "Buxa Tiger Reserve Rava Council",
+    tribe: "Rava / Toto",
+    gramSabha: "Jayanti Forest Village",
+    type: "community",
+    status: "delayed",
+    areaHa: 340.0,
+    daysPending: 1310,
+    coordinates: [26.49, 89.52],
+    svgCoords: [680, 360],
+    delayReason: "Tiger reserve relocation plan in conflict with Gram Sabha CFR.",
+    isAnomaly: true
+  },
+  {
+    id: "FRA-WB-002",
+    stateId: "INWB",
+    stateName: "West Bengal",
+    districtName: "Paschim Medinipur",
+    claimantName: "Junglemahal Santhal Council",
+    tribe: "Santhal",
+    gramSabha: "Jhargram Forest Circle",
+    type: "individual",
+    status: "approved",
+    areaHa: 2.1,
+    daysPending: 160,
+    coordinates: [22.42, 87.32],
+    svgCoords: [620, 520],
+    isAnomaly: false
+  },
+
+  // --- TRIPURA (INTR) ---
+  {
+    id: "FRA-TR-001",
+    stateId: "INTR",
+    stateName: "Tripura",
+    districtName: "Dhalai",
+    claimantName: "Ambassa Reang CFR Committee",
+    tribe: "Reang (PVTG)",
+    gramSabha: "Ambassa Rural",
+    type: "community",
+    status: "approved",
+    areaHa: 290.0,
+    daysPending: 180,
+    coordinates: [23.92, 91.85],
+    svgCoords: [740, 480],
+    isAnomaly: false
+  },
+
+  // --- ASSAM (INAS) ---
+  {
+    id: "FRA-AS-002",
+    stateId: "INAS",
+    stateName: "Assam",
+    districtName: "Kokrajhar",
+    claimantName: "Bodoland Tribal Forest Rights Forum",
+    tribe: "Bodo",
+    gramSabha: "Chirang Forest Range",
+    type: "community",
+    status: "approved",
+    areaHa: 410.0,
+    daysPending: 220,
+    coordinates: [26.40, 90.27],
+    svgCoords: [710, 370],
+    isAnomaly: false
   }
 ];
 
