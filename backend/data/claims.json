@@ -1,0 +1,645 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          81.02,
+          22.92
+        ]
+      },
+      "properties": {
+        "claim_id": "FRA-2026-001",
+        "district_id": "dist_a",
+        "claimant_type": "Community",
+        "status": "pending",
+        "days_pending": 620,
+        "anomaly_tags": [
+          "DELAY_EXCEEDS_STATE_AVG",
+          "SDLC_BOTTLENECK"
+        ],
+        "vegetation_loss_index": 0.04,
+        "claimant_name": "Karanjia Baiga CFR Council",
+        "area_ha": 32.5
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          81.18,
+          23.05
+        ]
+      },
+      "properties": {
+        "claim_id": "FRA-2026-002",
+        "district_id": "dist_a",
+        "claimant_type": "Individual",
+        "status": "pending",
+        "days_pending": 645,
+        "anomaly_tags": [
+          "DELAY_EXCEEDS_STATE_AVG"
+        ],
+        "vegetation_loss_index": 0.03,
+        "claimant_name": "Budhram Maravi",
+        "area_ha": 2.4
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          80.88,
+          22.84
+        ]
+      },
+      "properties": {
+        "claim_id": "FRA-2026-003",
+        "district_id": "dist_a",
+        "claimant_type": "Individual",
+        "status": "pending",
+        "days_pending": 595,
+        "anomaly_tags": [
+          "DELAY_EXCEEDS_STATE_AVG"
+        ],
+        "vegetation_loss_index": 0.02,
+        "claimant_name": "Phoolwati Bai",
+        "area_ha": 1.8
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          81.25,
+          22.98
+        ]
+      },
+      "properties": {
+        "claim_id": "FRA-2026-004",
+        "district_id": "dist_a",
+        "claimant_type": "Community",
+        "status": "pending",
+        "days_pending": 630,
+        "anomaly_tags": [
+          "DELAY_EXCEEDS_STATE_AVG",
+          "SDLC_BOTTLENECK"
+        ],
+        "vegetation_loss_index": 0.05,
+        "claimant_name": "Samnapur Forest FRC",
+        "area_ha": 44.0
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          80.75,
+          22.78
+        ]
+      },
+      "properties": {
+        "claim_id": "FRA-2026-005",
+        "district_id": "dist_a",
+        "claimant_type": "Individual",
+        "status": "pending",
+        "days_pending": 610,
+        "anomaly_tags": [
+          "DELAY_EXCEEDS_STATE_AVG"
+        ],
+        "vegetation_loss_index": 0.03,
+        "claimant_name": "Ramcharan Markam",
+        "area_ha": 3.1
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          81.3,
+          23.12
+        ]
+      },
+      "properties": {
+        "claim_id": "FRA-2026-006",
+        "district_id": "dist_a",
+        "claimant_type": "Individual",
+        "status": "approved",
+        "days_pending": 75,
+        "anomaly_tags": [],
+        "vegetation_loss_index": 0.01,
+        "claimant_name": "Sukratia Bai",
+        "area_ha": 1.5
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          80.95,
+          23.18
+        ]
+      },
+      "properties": {
+        "claim_id": "FRA-2026-007",
+        "district_id": "dist_a",
+        "claimant_type": "Individual",
+        "status": "rejected",
+        "days_pending": 180,
+        "anomaly_tags": [
+          "PROCEDURAL_DISPUTE"
+        ],
+        "vegetation_loss_index": 0.02,
+        "claimant_name": "Dhan Singh Uikey",
+        "area_ha": 2.0
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          80.35,
+          22.6
+        ]
+      },
+      "properties": {
+        "claim_id": "FRA-2026-008",
+        "district_id": "dist_b",
+        "claimant_type": "Individual",
+        "status": "rejected",
+        "days_pending": 10,
+        "anomaly_tags": [
+          "RAPID_REJECTION_SPIKE",
+          "NO_REASON_RECORDED"
+        ],
+        "vegetation_loss_index": 0.04,
+        "claimant_name": "Mangal Gond",
+        "area_ha": 2.1
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          80.48,
+          22.72
+        ]
+      },
+      "properties": {
+        "claim_id": "FRA-2026-009",
+        "district_id": "dist_b",
+        "claimant_type": "Individual",
+        "status": "rejected",
+        "days_pending": 12,
+        "anomaly_tags": [
+          "RAPID_REJECTION_SPIKE"
+        ],
+        "vegetation_loss_index": 0.03,
+        "claimant_name": "Ganga Bai Tekam",
+        "area_ha": 1.9
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          80.2,
+          22.48
+        ]
+      },
+      "properties": {
+        "claim_id": "FRA-2026-010",
+        "district_id": "dist_b",
+        "claimant_type": "Community",
+        "status": "rejected",
+        "days_pending": 14,
+        "anomaly_tags": [
+          "RAPID_REJECTION_SPIKE",
+          "GRAM_SABHA_BYPASS"
+        ],
+        "vegetation_loss_index": 0.05,
+        "claimant_name": "Nainpur Forest FRC",
+        "area_ha": 58.0
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          80.6,
+          22.55
+        ]
+      },
+      "properties": {
+        "claim_id": "FRA-2026-011",
+        "district_id": "dist_b",
+        "claimant_type": "Individual",
+        "status": "rejected",
+        "days_pending": 8,
+        "anomaly_tags": [
+          "RAPID_REJECTION_SPIKE"
+        ],
+        "vegetation_loss_index": 0.02,
+        "claimant_name": "Devsingh Dhurve",
+        "area_ha": 2.8
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          80.1,
+          22.75
+        ]
+      },
+      "properties": {
+        "claim_id": "FRA-2026-012",
+        "district_id": "dist_b",
+        "claimant_type": "Individual",
+        "status": "rejected",
+        "days_pending": 13,
+        "anomaly_tags": [
+          "RAPID_REJECTION_SPIKE"
+        ],
+        "vegetation_loss_index": 0.03,
+        "claimant_name": "Kamla Bai",
+        "area_ha": 1.7
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          80.52,
+          22.8
+        ]
+      },
+      "properties": {
+        "claim_id": "FRA-2026-013",
+        "district_id": "dist_b",
+        "claimant_type": "Community",
+        "status": "rejected",
+        "days_pending": 11,
+        "anomaly_tags": [
+          "RAPID_REJECTION_SPIKE"
+        ],
+        "vegetation_loss_index": 0.06,
+        "claimant_name": "Bichhiya CFR Collective",
+        "area_ha": 35.0
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          80.25,
+          22.9
+        ]
+      },
+      "properties": {
+        "claim_id": "FRA-2026-014",
+        "district_id": "dist_b",
+        "claimant_type": "Individual",
+        "status": "approved",
+        "days_pending": 45,
+        "anomaly_tags": [],
+        "vegetation_loss_index": 0.02,
+        "claimant_name": "Ramsingh Masram",
+        "area_ha": 2.5
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          82.42,
+          22.38
+        ]
+      },
+      "properties": {
+        "claim_id": "FRA-2026-015",
+        "district_id": "dist_c",
+        "claimant_type": "Community",
+        "status": "pending",
+        "days_pending": 145,
+        "anomaly_tags": [
+          "FOREST_COVER_LOSS_ON_CLAIM",
+          "ENCROACHMENT_RISK"
+        ],
+        "vegetation_loss_index": 0.46,
+        "claimant_name": "Pali Tehsil CFR Committee",
+        "area_ha": 120.0
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          82.65,
+          22.52
+        ]
+      },
+      "properties": {
+        "claim_id": "FRA-2026-016",
+        "district_id": "dist_c",
+        "claimant_type": "Community",
+        "status": "pending",
+        "days_pending": 160,
+        "anomaly_tags": [
+          "FOREST_COVER_LOSS_ON_CLAIM",
+          "ILLEGAL_CLEARANCE"
+        ],
+        "vegetation_loss_index": 0.43,
+        "claimant_name": "Katghora Tribal Forest Forum",
+        "area_ha": 85.0
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          82.25,
+          22.25
+        ]
+      },
+      "properties": {
+        "claim_id": "FRA-2026-017",
+        "district_id": "dist_c",
+        "claimant_type": "Individual",
+        "status": "pending",
+        "days_pending": 115,
+        "anomaly_tags": [
+          "FOREST_COVER_LOSS_ON_CLAIM"
+        ],
+        "vegetation_loss_index": 0.39,
+        "claimant_name": "Birbal Korwa (PVTG)",
+        "area_ha": 3.2
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          82.78,
+          22.68
+        ]
+      },
+      "properties": {
+        "claim_id": "FRA-2026-018",
+        "district_id": "dist_c",
+        "claimant_type": "Individual",
+        "status": "approved",
+        "days_pending": 50,
+        "anomaly_tags": [],
+        "vegetation_loss_index": 0.05,
+        "claimant_name": "Chandrawati Bai",
+        "area_ha": 2.1
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          82.35,
+          22.6
+        ]
+      },
+      "properties": {
+        "claim_id": "FRA-2026-019",
+        "district_id": "dist_c",
+        "claimant_type": "Individual",
+        "status": "approved",
+        "days_pending": 62,
+        "anomaly_tags": [],
+        "vegetation_loss_index": 0.04,
+        "claimant_name": "Ghanshyam Majhi",
+        "area_ha": 1.9
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          82.55,
+          22.2
+        ]
+      },
+      "properties": {
+        "claim_id": "FRA-2026-020",
+        "district_id": "dist_c",
+        "claimant_type": "Community",
+        "status": "approved",
+        "days_pending": 80,
+        "anomaly_tags": [],
+        "vegetation_loss_index": 0.06,
+        "claimant_name": "Kartala Gram Sabha",
+        "area_ha": 65.0
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          82.85,
+          22.42
+        ]
+      },
+      "properties": {
+        "claim_id": "FRA-2026-021",
+        "district_id": "dist_c",
+        "claimant_type": "Individual",
+        "status": "rejected",
+        "days_pending": 90,
+        "anomaly_tags": [
+          "BOUNDARY_OVERLAP"
+        ],
+        "vegetation_loss_index": 0.08,
+        "claimant_name": "Sonu Rathia",
+        "area_ha": 2.6
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          80.18,
+          21.82
+        ]
+      },
+      "properties": {
+        "claim_id": "FRA-2026-022",
+        "district_id": "dist_d",
+        "claimant_type": "Individual",
+        "status": "approved",
+        "days_pending": 55,
+        "anomaly_tags": [
+          "NORMAL"
+        ],
+        "vegetation_loss_index": 0.02,
+        "claimant_name": "Devi Prasad Bisen",
+        "area_ha": 2.2
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          80.32,
+          21.95
+        ]
+      },
+      "properties": {
+        "claim_id": "FRA-2026-023",
+        "district_id": "dist_d",
+        "claimant_type": "Community",
+        "status": "approved",
+        "days_pending": 70,
+        "anomaly_tags": [
+          "NORMAL"
+        ],
+        "vegetation_loss_index": 0.03,
+        "claimant_name": "Baihar Baiga CFR Collective",
+        "area_ha": 42.0
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          80.45,
+          21.75
+        ]
+      },
+      "properties": {
+        "claim_id": "FRA-2026-024",
+        "district_id": "dist_d",
+        "claimant_type": "Individual",
+        "status": "approved",
+        "days_pending": 60,
+        "anomaly_tags": [
+          "NORMAL"
+        ],
+        "vegetation_loss_index": 0.01,
+        "claimant_name": "Radhika Bai Netam",
+        "area_ha": 1.6
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          79.95,
+          21.65
+        ]
+      },
+      "properties": {
+        "claim_id": "FRA-2026-025",
+        "district_id": "dist_d",
+        "claimant_type": "Individual",
+        "status": "approved",
+        "days_pending": 65,
+        "anomaly_tags": [
+          "NORMAL"
+        ],
+        "vegetation_loss_index": 0.02,
+        "claimant_name": "Jagmohan Marskole",
+        "area_ha": 3.0
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          80.25,
+          22.05
+        ]
+      },
+      "properties": {
+        "claim_id": "FRA-2026-026",
+        "district_id": "dist_d",
+        "claimant_type": "Community",
+        "status": "approved",
+        "days_pending": 75,
+        "anomaly_tags": [
+          "NORMAL"
+        ],
+        "vegetation_loss_index": 0.03,
+        "claimant_name": "Paraswada Gram Sabha",
+        "area_ha": 78.0
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          80.55,
+          21.88
+        ]
+      },
+      "properties": {
+        "claim_id": "FRA-2026-027",
+        "district_id": "dist_d",
+        "claimant_type": "Individual",
+        "status": "pending",
+        "days_pending": 65,
+        "anomaly_tags": [
+          "NORMAL"
+        ],
+        "vegetation_loss_index": 0.02,
+        "claimant_name": "Chhotelal Pardhi",
+        "area_ha": 1.8
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          79.85,
+          21.9
+        ]
+      },
+      "properties": {
+        "claim_id": "FRA-2026-028",
+        "district_id": "dist_d",
+        "claimant_type": "Individual",
+        "status": "rejected",
+        "days_pending": 40,
+        "anomaly_tags": [
+          "NORMAL"
+        ],
+        "vegetation_loss_index": 0.02,
+        "claimant_name": "Mithilesh Sayam",
+        "area_ha": 2.1
+      }
+    }
+  ]
+}
