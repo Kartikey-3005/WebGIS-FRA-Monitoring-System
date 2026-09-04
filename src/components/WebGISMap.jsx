@@ -12,7 +12,12 @@ import {
   Users, 
   AlertTriangle, 
   RotateCcw,
-  Globe
+  Globe,
+  Flame,
+  Clock,
+  ShieldCheck,
+  Ban,
+  Layers
 } from 'lucide-react';
 import MapLegend from './MapLegend';
 import { 
@@ -20,6 +25,7 @@ import {
   getEsriReferenceUrl, 
   ESRI_ATTRIBUTION 
 } from '../config/esriConfig';
+import { fetchDistricts } from '../services/fraApi';
 
 // Controller to smoothly animate map camera
 function MapController({ selectedState, resetTrigger, activeClaim }) {
@@ -37,8 +43,8 @@ function MapController({ selectedState, resetTrigger, activeClaim }) {
         duration: 1.2
       });
     } else {
-      // Pan-India Overview (Centered on India)
-      map.flyTo([22.0, 79.5], 5, {
+      // Pan-India Overview (Entire country visible with all plotted claims)
+      map.flyTo([22.5, 79.5], 5, {
         animate: true,
         duration: 1.2
       });
@@ -59,20 +65,17 @@ export default function WebGISMap({
   onSelectClaim = () => {}
 }) {
   const [statusFilter, setStatusFilter] = useState('all');
-  // Default to pure daylight satellite view (NO dark mode)
   const [baseLayer, setBaseLayer] = useState('satellite'); // 'satellite' | 'topo' | 'osm'
+  const [anomalyDistrictsGeoJson, setAnomalyDistrictsGeoJson] = useState(null);
   const geoJsonRef = useRef(null);
+  const districtGeoJsonRef = useRef(null);
 
-  // Basemap Tile Layers (Natural daylight colors - No dark filter on satellite)
+  // Basemap Tile Layers (Satellite and Street)
   const basemapTiles = {
     satellite: {
       url: getEsriImageryUrl(),
       referenceUrl: getEsriReferenceUrl(),
       attribution: ESRI_ATTRIBUTION
-    },
-    topo: {
-      url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',
-      attribution: 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ, TomTom, Intermap, iPC, USGS, FAO, NPS, NRCAN, GeoBase, Kadaster NL, Ordnance Survey, Esri Japan, METI, Esri China (Hong Kong), and the GIS User Community'
     },
     osm: {
       url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
@@ -80,36 +83,55 @@ export default function WebGISMap({
     }
   };
 
-  // Filter claims
+  // Fetch live anomaly district boundaries from FastAPI backend on load
+  useEffect(() => {
+    fetchDistricts()
+      .then((data) => {
+        if (data && data.features && data.features.length > 0) {
+          setAnomalyDistrictsGeoJson(data);
+        }
+      })
+      .catch((err) => {
+        console.warn('Backend districts offline or unreachable:', err);
+      });
+  }, [resetTrigger]);
+
+  // Filter claims based on state and status
   const filteredClaims = claimsData.filter(claim => {
-    if (selectedState && claim.stateId !== selectedState.id) {
-      return false;
+    if (selectedState && claim.stateId) {
+      const match = claim.stateId === selectedState.id || 
+                    claim.stateId.replace('IN', '') === selectedState.code ||
+                    (claim.stateName && claim.stateName.toLowerCase() === (selectedState.name || '').toLowerCase());
+      if (!match) return false;
     }
-    if (statusFilter !== 'all' && claim.status !== statusFilter) {
-      return false;
+    if (statusFilter !== 'all') {
+      if (statusFilter === 'delayed' && !(claim.status === 'delayed' || (claim.days_pending >= 300 || claim.daysPending >= 300))) {
+        return false;
+      }
+      if (statusFilter !== 'delayed' && claim.status !== statusFilter) {
+        return false;
+      }
     }
     return true;
   });
 
-  // Dynamic Polygon Styling (Clean borders without dark masks)
-  // Dynamic Polygon Styling (Clean borders without dark masks)
+  // State Boundary Styling
   const getStateStyle = (feature) => {
     const isSelected = selectedState && (
       selectedState.id === feature.id || 
       selectedState.id === feature.properties?.id ||
       selectedState.code === feature.properties?.code
     );
-    const isCritical = feature.properties?.aiAnalysis?.severity === 'critical';
 
     if (selectedState) {
       if (isSelected) {
         return {
           fillColor: '#2563eb',
-          fillOpacity: 0.22,
+          fillOpacity: 0.15,
           color: '#60a5fa',
-          weight: 2.8,
+          weight: 2.2,
           dashArray: '3, 3',
-          opacity: 1,
+          opacity: 0.9,
         };
       }
       return {
@@ -117,33 +139,68 @@ export default function WebGISMap({
         fillOpacity: 0,
         color: '#ffffff',
         weight: 0.5,
-        opacity: 0.25,
+        opacity: 0.2,
       };
     }
 
-    // Default Pan-India View (Clean transparent satellite viewing)
     return {
-      fillColor: isCritical ? '#f43f5e' : '#10b981',
-      fillOpacity: 0.03,
+      fillColor: '#10b981',
+      fillOpacity: 0.02,
       color: '#ffffff',
-      weight: 0.9,
+      weight: 0.8,
       dashArray: '2, 2',
-      opacity: 0.65,
+      opacity: 0.5,
     };
   };
 
+  // Anomaly District Boundary Styling (Distinct colors per anomaly flag)
+  const getAnomalyDistrictStyle = (feature) => {
+    const flag = feature.properties?.anomaly_flag;
+    switch (flag) {
+      case 'HIGH_PENDING_DELAY':
+        // Red for administrative delay bottleneck
+        return {
+          fillColor: '#ef4444',
+          fillOpacity: 0.20,
+          color: '#ef4444',
+          weight: 2.8,
+          dashArray: '4, 4'
+        };
+      case 'ABNORMAL_REJECTION_SPIKE':
+        // Orange / Amber for rejection spike
+        return {
+          fillColor: '#f97316',
+          fillOpacity: 0.18,
+          color: '#f97316',
+          weight: 2.6
+        };
+      case 'FOREST_COVER_LOSS_ON_CLAIM':
+        // Deep Crimson / Red for encroachment & deforestation
+        return {
+          fillColor: '#b91c1c',
+          fillOpacity: 0.26,
+          color: '#dc2626',
+          weight: 3.0,
+          dashArray: '2, 3'
+        };
+      case 'NORMAL':
+      default:
+        // Slate / Gray for benchmark control group
+        return {
+          fillColor: '#64748b',
+          fillOpacity: 0.10,
+          color: '#94a3b8',
+          weight: 1.8
+        };
+    }
+  };
+
+  // State Event Listeners
   const onEachState = (feature, layer) => {
     layer.on({
-      click: () => {
-        onSelectState(feature.properties);
-      },
+      click: () => onSelectState(feature.properties),
       mouseover: (e) => {
-        const target = e.target;
-        target.setStyle({
-          fillOpacity: 0.25,
-          weight: 2.5,
-          color: '#38bdf8'
-        });
+        e.target.setStyle({ fillOpacity: 0.22, weight: 2.2, color: '#38bdf8' });
       },
       mouseout: (e) => {
         if (geoJsonRef.current) {
@@ -153,24 +210,60 @@ export default function WebGISMap({
     });
   };
 
-  const getMarkerColor = (status) => {
-    switch (status) {
-      case 'approved':
-        return { fill: '#10b981', border: '#059669', pulse: false };
-      case 'pending':
-        return { fill: '#f59e0b', border: '#d97706', pulse: false };
-      case 'delayed':
-        return { fill: '#ef4444', border: '#b91c1c', pulse: true };
-      default:
-        return { fill: '#94a3b8', border: '#64748b', pulse: false };
+  // Anomaly District Layer Tooltips & Popups
+  const onEachAnomalyDistrict = (feature, layer) => {
+    const props = feature.properties;
+    layer.bindTooltip(
+      `<div class="font-sans text-xs">
+        <strong>${props.name}</strong><br/>
+        <span class="text-rose-400 font-semibold">${props.anomaly_flag}</span>
+      </div>`,
+      { sticky: true, opacity: 0.9 }
+    );
+  };
+
+  // Claim Marker Color Mapping with Anomaly Logic
+  // - Red for delays / encroachments
+  // - Green for approved
+  // - Gray for benchmark
+  // - Orange/Amber for rejection spike & pending
+  const getMarkerColor = (claim) => {
+    const status = claim.status;
+    const vegLoss = claim.vegetation_loss_index || claim.vegetationLossIndex || 0;
+    const isHighLoss = vegLoss >= 0.20 || (claim.anomaly_tags && claim.anomaly_tags.includes('FOREST_COVER_LOSS_ON_CLAIM'));
+    const days = claim.days_pending || claim.daysPending || 0;
+    const isDelay = status === 'delayed' || days >= 300 || (claim.anomaly_tags && claim.anomaly_tags.includes('DELAY_EXCEEDS_STATE_AVG'));
+    const isBenchmark = claim.district_id === 'dist_d' || (claim.anomaly_tags && claim.anomaly_tags.includes('NORMAL'));
+
+    if (isHighLoss) {
+      // Red / Crimson for Encroachment / Canopy Deforestation
+      return { fill: '#dc2626', border: '#991b1b', pulse: true, label: 'Encroachment / Loss' };
     }
+    if (isDelay) {
+      // Red for Long Bureaucratic Delays
+      return { fill: '#ef4444', border: '#b91c1c', pulse: true, label: 'Delay Bottleneck' };
+    }
+    if (status === 'approved') {
+      // Green for Approved Claims
+      return { fill: '#10b981', border: '#059669', pulse: false, label: 'Approved' };
+    }
+    if (status === 'rejected') {
+      // Amber/Orange for Rejected / Rejection Spike
+      return { fill: '#f97316', border: '#c2410c', pulse: false, label: 'Rejected' };
+    }
+    if (isBenchmark) {
+      // Gray for Normal Benchmark Control
+      return { fill: '#94a3b8', border: '#64748b', pulse: false, label: 'Benchmark' };
+    }
+    // Default Pending
+    return { fill: '#f59e0b', border: '#d97706', pulse: false, label: 'Pending' };
   };
 
   return (
     <div className="relative w-full h-full overflow-hidden bg-slate-900">
       <MapContainer
-        center={[22.0, 79.5]}
-        zoom={5}
+        center={[22.3, 81.2]}
+        zoom={6}
         minZoom={4}
         maxZoom={18}
         scrollWheelZoom={true}
@@ -183,7 +276,7 @@ export default function WebGISMap({
           activeClaim={activeClaim}
         />
 
-        {/* Primary Basemap Tile Layer - Esri World Imagery (No Dark Mode!) */}
+        {/* Primary Basemap Tile Layer - Esri World Imagery */}
         <TileLayer
           key={baseLayer}
           attribution={basemapTiles[baseLayer].attribution}
@@ -191,7 +284,7 @@ export default function WebGISMap({
           maxZoom={19}
         />
 
-        {/* Optional Esri Boundary and Places Reference Overlay for Satellite */}
+        {/* Esri Places Overlay */}
         {baseLayer === 'satellite' && basemapTiles.satellite.referenceUrl && (
           <TileLayer
             key="ref-layer"
@@ -201,7 +294,7 @@ export default function WebGISMap({
           />
         )}
 
-        {/* State Boundaries GeoJSON Layer (State names permanently removed from map) */}
+        {/* India States Boundary Layer */}
         <GeoJSON
           key={`states-geojson-${selectedState ? selectedState.id : 'all'}`}
           ref={geoJsonRef}
@@ -210,32 +303,50 @@ export default function WebGISMap({
           onEachFeature={onEachState}
         />
 
-        {/* Plotted Claims Across India */}
+        {/* 4 Targeted Anomaly District Boundary Polygons Layer */}
+        {anomalyDistrictsGeoJson && (
+          <GeoJSON
+            key={`anomaly-districts-${anomalyDistrictsGeoJson.features?.length}`}
+            ref={districtGeoJsonRef}
+            data={anomalyDistrictsGeoJson}
+            style={getAnomalyDistrictStyle}
+            onEachFeature={onEachAnomalyDistrict}
+          />
+        )}
+
+        {/* Claim Points Plotted on Map */}
         {filteredClaims.map((claim) => {
-          const colors = getMarkerColor(claim.status);
-          const isCurrentActive = activeClaim && activeClaim.id === claim.id;
+          const coords = claim.coordinates || (claim.lat && claim.lon ? [claim.lat, claim.lon] : null);
+          if (!coords) return null;
+
+          const colors = getMarkerColor(claim);
+          const claimId = claim.claim_id || claim.id;
+          const isCurrentActive = activeClaim && (activeClaim.id === claimId || activeClaim.claim_id === claimId);
+          const isCommunity = (claim.claimant_type || claim.type || '').toLowerCase() === 'community';
+          const vegLoss = claim.vegetation_loss_index || claim.vegetationLossIndex || 0;
+          const daysPending = claim.days_pending || claim.daysPending || 0;
 
           return (
-            <React.Fragment key={claim.id}>
-              {/* Outer pulsing ring for delayed claims or actively inspected claims */}
+            <React.Fragment key={claimId}>
+              {/* Outer pulsing ring for critical anomaly / actively inspected claims */}
               {(colors.pulse || isCurrentActive) && (
                 <CircleMarker
-                  center={claim.coordinates}
-                  radius={isCurrentActive ? 16 : 11}
+                  center={coords}
+                  radius={isCurrentActive ? 16 : 12}
                   pathOptions={{
                     color: colors.fill,
                     fillColor: colors.fill,
-                    fillOpacity: 0.3,
-                    weight: 1.5,
+                    fillOpacity: 0.35,
+                    weight: 2,
                     dashArray: '3, 3'
                   }}
                 />
               )}
 
-              {/* Main Claim Marker */}
+              {/* Main Claim Circle Marker */}
               <CircleMarker
-                center={claim.coordinates}
-                radius={claim.type === 'community' ? 7.5 : 5.5}
+                center={coords}
+                radius={isCommunity ? 8 : 6}
                 eventHandlers={{
                   click: () => onSelectClaim && onSelectClaim(claim)
                 }}
@@ -247,29 +358,29 @@ export default function WebGISMap({
                 }}
               >
                 <Popup className="custom-leaflet-popup">
-                  <div className="w-60 text-slate-200">
+                  <div className="w-64 text-slate-200">
                     <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-slate-800">
                       <div className="flex items-center gap-1.5">
-                        {claim.type === 'community' ? (
+                        {isCommunity ? (
                           <span className="p-1 rounded bg-indigo-500/20 text-indigo-300">
-                            <Users className="w-3 h-3" />
+                            <Users className="w-3.5 h-3.5" />
                           </span>
                         ) : (
                           <span className="p-1 rounded bg-emerald-500/20 text-emerald-300">
-                            <User className="w-3 h-3" />
+                            <User className="w-3.5 h-3.5" />
                           </span>
                         )}
                         <div>
                           <p className="text-[10px] font-mono text-slate-400 leading-none">
-                            {claim.id}
+                            {claimId}
                           </p>
                           <span className="text-[9px] font-semibold text-slate-300 uppercase">
-                            {claim.type === 'community' ? 'Community Right (CFR)' : 'Individual Right (IFR)'}
+                            {isCommunity ? 'Community Right (CFR)' : 'Individual Right (IFR)'}
                           </span>
                         </div>
                       </div>
 
-                      <span className={`text-[9px] font-bold px-1.5 py-0.2 rounded-full capitalize ${
+                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded capitalize ${
                         claim.status === 'approved' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' :
                         claim.status === 'pending' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' :
                         'bg-rose-500/20 text-rose-300 border border-rose-500/40'
@@ -279,24 +390,50 @@ export default function WebGISMap({
                     </div>
 
                     <p className="text-xs font-bold text-white mb-1">
-                      {claim.claimantName}
+                      {claim.claimant_name || claim.claimantName || 'Tribal Claimant'}
                     </p>
 
                     <div className="grid grid-cols-2 gap-1 text-[10px] mb-1.5">
-                      <div className="bg-slate-900/80 p-1 rounded border border-slate-800">
-                        <span className="text-slate-400 block text-[9px]">Location</span>
-                        <span className="font-medium text-slate-200">{claim.districtName}, {claim.stateName}</span>
+                      <div className="bg-slate-900/80 p-1.5 rounded border border-slate-800">
+                        <span className="text-slate-400 block text-[9px]">District</span>
+                        <span className="font-semibold text-slate-200 uppercase">{claim.district_id || claim.districtName}</span>
                       </div>
-                      <div className="bg-slate-900/80 p-1 rounded border border-slate-800">
-                        <span className="text-slate-400 block text-[9px]">Area / Tribe</span>
-                        <span className="font-bold text-emerald-400">{claim.areaHa} Ha ({claim.tribe})</span>
+                      <div className="bg-slate-900/80 p-1.5 rounded border border-slate-800">
+                        <span className="text-slate-400 block text-[9px]">Days Waiting</span>
+                        <span className={`font-bold ${daysPending > 300 ? 'text-rose-400' : 'text-emerald-400'}`}>
+                          {daysPending} days
+                        </span>
                       </div>
                     </div>
 
-                    {claim.delayReason && (
-                      <div className="bg-rose-950/40 border border-rose-500/30 rounded p-1.5 text-[10px] text-rose-200">
-                        <span className="font-bold text-rose-400">⚠️ Anomaly: </span>
-                        {claim.delayReason}
+                    {/* Vegetation Loss Alert if present */}
+                    {vegLoss > 0 && (
+                      <div className={`p-1.5 rounded text-[10px] mb-1.5 flex items-center justify-between border ${
+                        vegLoss >= 0.20 
+                          ? 'bg-rose-950/40 border-rose-500/40 text-rose-200' 
+                          : 'bg-slate-900/80 border-slate-800 text-slate-300'
+                      }`}>
+                        <span className="flex items-center gap-1 font-semibold">
+                          <Flame className="w-3 h-3 text-rose-400" />
+                          Vegetation Loss:
+                        </span>
+                        <span className="font-bold text-rose-300 font-mono">
+                          {(vegLoss * 100).toFixed(1)}%
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Anomaly tags */}
+                    {claim.anomaly_tags && claim.anomaly_tags.length > 0 && (
+                      <div className="pt-1 border-t border-slate-800/80 flex flex-wrap gap-1">
+                        {claim.anomaly_tags.map((tag, idx) => (
+                          <span 
+                            key={idx} 
+                            className="text-[8px] font-mono font-semibold px-1 py-0.2 rounded bg-rose-500/15 text-rose-300 border border-rose-500/30"
+                          >
+                            {tag}
+                          </span>
+                        ))}
                       </div>
                     )}
                   </div>
@@ -307,52 +444,42 @@ export default function WebGISMap({
         })}
       </MapContainer>
 
-      {/* Top-Right Basemap Switcher & Esri API Key Config */}
-      <div className="absolute top-5 right-5 z-[1000] flex items-center gap-2">
-        {/* Reset / All India */}
+      {/* Top-Left: Central View Button */}
+      <div className="absolute top-5 left-5 z-[1000] flex items-center gap-2">
         <button
           onClick={onResetAllIndia}
-          className="bg-slate-900/90 backdrop-blur-md border border-slate-700/80 rounded-xl px-2.5 py-1.5 text-xs text-slate-200 hover:text-white flex items-center gap-1.5 shadow-lg transition"
-          title="Fit All India"
+          className="bg-slate-900/90 hover:bg-slate-800 backdrop-blur-md border border-slate-700/80 hover:border-slate-600 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-200 hover:text-white flex items-center gap-1.5 shadow-xl transition"
+          title="Reset to Central View"
         >
           <RotateCcw className="w-3.5 h-3.5 text-emerald-400" />
-          <span>India View</span>
+          <span>Central View</span>
         </button>
+      </div>
 
-        {/* Basemap Selection Chips (Daylight Natural Colors) */}
+      {/* Top-Right: Basemap Switcher (Satellite & Street - Topo removed) */}
+      <div className="absolute top-5 right-5 z-[1000] flex items-center gap-2">
         <div className="bg-slate-900/90 backdrop-blur-md border border-slate-700/80 rounded-xl shadow-xl p-1 flex items-center gap-1 text-xs">
           <button
             onClick={() => setBaseLayer('satellite')}
-            className={`px-2.5 py-1 rounded-lg font-medium transition flex items-center gap-1 ${
+            className={`px-3 py-1 rounded-lg font-medium transition flex items-center gap-1.5 ${
               baseLayer === 'satellite' ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'
             }`}
-            title="Esri World Imagery (High-Resolution Satellite - Natural Color)"
           >
-            <Globe className="w-3 h-3" />
-            <span>Esri Satellite</span>
-          </button>
-          <button
-            onClick={() => setBaseLayer('topo')}
-            className={`px-2.5 py-1 rounded-lg font-medium transition ${
-              baseLayer === 'topo' ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'
-            }`}
-            title="Esri World Topographic Map"
-          >
-            Topo
+            <Globe className="w-3.5 h-3.5" />
+            <span>Satellite</span>
           </button>
           <button
             onClick={() => setBaseLayer('osm')}
-            className={`px-2.5 py-1 rounded-lg font-medium transition ${
+            className={`px-3 py-1 rounded-lg font-medium transition ${
               baseLayer === 'osm' ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'
             }`}
-            title="OpenStreetMap Street View"
           >
             Street
           </button>
         </div>
       </div>
 
-      {/* Bottom-Left Simple Legend */}
+      {/* Bottom-Left Anomaly Color Map Legend */}
       <MapLegend
         statusFilter={statusFilter}
         setStatusFilter={setStatusFilter}
