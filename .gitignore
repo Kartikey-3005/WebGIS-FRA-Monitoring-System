@@ -23,3 +23,9 @@ dist-ssr
 *.sln
 *.sw?
 scratch/
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+env/
+venv/
