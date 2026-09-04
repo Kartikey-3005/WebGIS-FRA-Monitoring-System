@@ -5,17 +5,25 @@ import {
   GeoJSON, 
   CircleMarker, 
   Popup, 
-  Tooltip,
   useMap 
 } from 'react-leaflet';
 import { 
   User, 
   Users, 
   AlertTriangle, 
-  Compass,
-  RotateCcw
+  RotateCcw,
+  Key,
+  Globe,
+  Settings,
+  Check
 } from 'lucide-react';
 import MapLegend from './MapLegend';
+import { 
+  getEsriImageryUrl, 
+  getEsriReferenceUrl, 
+  ESRI_ATTRIBUTION, 
+  DEFAULT_ESRI_KEY 
+} from '../config/esriConfig';
 
 // Controller to smoothly animate map camera
 function MapController({ selectedState, resetTrigger, activeClaim }) {
@@ -55,17 +63,24 @@ export default function WebGISMap({
   onSelectClaim = () => {}
 }) {
   const [statusFilter, setStatusFilter] = useState('all');
-  const [baseLayer, setBaseLayer] = useState('dark'); // 'dark' | 'osm' | 'terrain'
+  // Default to pure daylight satellite view (NO dark mode)
+  const [baseLayer, setBaseLayer] = useState('satellite'); // 'satellite' | 'topo' | 'osm'
+  const [esriApiKey, setEsriApiKey] = useState(DEFAULT_ESRI_KEY);
+  const [showKeyModal, setShowKeyModal] = useState(false);
+  const [tempKey, setTempKey] = useState(DEFAULT_ESRI_KEY);
+  const [keySaved, setKeySaved] = useState(false);
   const geoJsonRef = useRef(null);
 
+  // Basemap Tile Layers (Natural daylight colors - No dark filter on satellite)
   const basemapTiles = {
-    dark: {
-      url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
+    satellite: {
+      url: getEsriImageryUrl(esriApiKey),
+      referenceUrl: getEsriReferenceUrl(esriApiKey),
+      attribution: ESRI_ATTRIBUTION
     },
-    terrain: {
-      url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-      attribution: '&copy; OpenStreetMap &copy; CARTO'
+    topo: {
+      url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',
+      attribution: 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ, TomTom, Intermap, iPC, USGS, FAO, NPS, NRCAN, GeoBase, Kadaster NL, Ordnance Survey, Esri Japan, METI, Esri China (Hong Kong), and the GIS User Community'
     },
     osm: {
       url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
@@ -84,20 +99,21 @@ export default function WebGISMap({
     return true;
   });
 
-  // Dynamic Polygon Styling
+  // Dynamic Polygon Styling (Clean borders without dark masks)
   const getStateStyle = (feature) => {
     const isSelected = selectedState && selectedState.id === feature.properties.id;
     const isCritical = feature.properties.aiAnalysis?.severity === 'critical';
 
+    // On satellite layer, keep fill subtle so real forest imagery is visible
     return {
       fillColor: isSelected 
         ? '#3b82f6' 
         : (isCritical ? '#f43f5e' : '#10b981'),
-      fillOpacity: isSelected ? 0.35 : 0.16,
-      color: isSelected ? '#60a5fa' : '#38bdf8',
-      weight: isSelected ? 3 : 1.8,
+      fillOpacity: isSelected ? 0.35 : 0.08,
+      color: isSelected ? '#60a5fa' : '#ffffff',
+      weight: isSelected ? 3 : 1.5,
       dashArray: isSelected ? '4, 4' : '2, 2',
-      opacity: 0.85,
+      opacity: 0.9,
     };
   };
 
@@ -109,7 +125,7 @@ export default function WebGISMap({
       mouseover: (e) => {
         const target = e.target;
         target.setStyle({
-          fillOpacity: 0.45,
+          fillOpacity: 0.35,
           weight: 3,
           color: '#ffffff'
         });
@@ -135,13 +151,22 @@ export default function WebGISMap({
     }
   };
 
+  const handleSaveApiKey = () => {
+    setEsriApiKey(tempKey);
+    setKeySaved(true);
+    setTimeout(() => {
+      setKeySaved(false);
+      setShowKeyModal(false);
+    }, 800);
+  };
+
   return (
-    <div className="relative w-full h-full overflow-hidden bg-slate-950">
+    <div className="relative w-full h-full overflow-hidden bg-slate-900">
       <MapContainer
         center={[22.0, 79.5]}
         zoom={5}
         minZoom={4}
-        maxZoom={14}
+        maxZoom={18}
         scrollWheelZoom={true}
         className="w-full h-full z-10"
         zoomControl={false}
@@ -152,31 +177,31 @@ export default function WebGISMap({
           activeClaim={activeClaim}
         />
 
-        {/* Basemap Tile Layer */}
+        {/* Primary Basemap Tile Layer - Esri World Imagery (No Dark Mode!) */}
         <TileLayer
+          key={`${baseLayer}-${esriApiKey}`}
           attribution={basemapTiles[baseLayer].attribution}
           url={basemapTiles[baseLayer].url}
           maxZoom={19}
         />
 
-        {/* State Boundaries GeoJSON Layer */}
+        {/* Optional Esri Boundary and Places Reference Overlay for Satellite */}
+        {baseLayer === 'satellite' && basemapTiles.satellite.referenceUrl && (
+          <TileLayer
+            key={`ref-${esriApiKey}`}
+            url={basemapTiles.satellite.referenceUrl}
+            opacity={0.8}
+            maxZoom={19}
+          />
+        )}
+
+        {/* State Boundaries GeoJSON Layer (State names permanently removed from map) */}
         <GeoJSON
           ref={geoJsonRef}
           data={statesGeoJson}
           style={getStateStyle}
           onEachFeature={onEachState}
-        >
-          {statesGeoJson.features.map(f => (
-            <Tooltip 
-              key={f.properties.id} 
-              direction="center" 
-              permanent 
-              className="bg-transparent border-0 shadow-none font-bold text-white text-[11px] drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]"
-            >
-              {f.properties.name}
-            </Tooltip>
-          ))}
-        </GeoJSON>
+        />
 
         {/* Plotted Claims Across India */}
         {filteredClaims.map((claim) => {
@@ -193,7 +218,7 @@ export default function WebGISMap({
                   pathOptions={{
                     color: colors.fill,
                     fillColor: colors.fill,
-                    fillOpacity: 0.25,
+                    fillOpacity: 0.3,
                     weight: 1.5,
                     dashArray: '3, 3'
                   }}
@@ -203,7 +228,7 @@ export default function WebGISMap({
               {/* Main Claim Marker */}
               <CircleMarker
                 center={claim.coordinates}
-                radius={claim.type === 'community' ? 7 : 5.5}
+                radius={claim.type === 'community' ? 7.5 : 5.5}
                 eventHandlers={{
                   click: () => onSelectClaim && onSelectClaim(claim)
                 }}
@@ -275,8 +300,9 @@ export default function WebGISMap({
         })}
       </MapContainer>
 
-      {/* Top-Right Basemap Switcher & Reset */}
+      {/* Top-Right Basemap Switcher & Esri API Key Config */}
       <div className="absolute top-5 right-5 z-[1000] flex items-center gap-2">
+        {/* Reset / All India */}
         <button
           onClick={onResetAllIndia}
           className="bg-slate-900/90 backdrop-blur-md border border-slate-700/80 rounded-xl px-2.5 py-1.5 text-xs text-slate-200 hover:text-white flex items-center gap-1.5 shadow-lg transition"
@@ -286,33 +312,95 @@ export default function WebGISMap({
           <span>India View</span>
         </button>
 
+        {/* Basemap Selection Chips (Daylight Natural Colors) */}
         <div className="bg-slate-900/90 backdrop-blur-md border border-slate-700/80 rounded-xl shadow-xl p-1 flex items-center gap-1 text-xs">
           <button
-            onClick={() => setBaseLayer('dark')}
-            className={`px-2 py-1 rounded-lg font-medium transition ${
-              baseLayer === 'dark' ? 'bg-slate-800 text-emerald-400' : 'text-slate-400 hover:text-white'
+            onClick={() => setBaseLayer('satellite')}
+            className={`px-2.5 py-1 rounded-lg font-medium transition flex items-center gap-1 ${
+              baseLayer === 'satellite' ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'
             }`}
+            title="Esri World Imagery (High-Resolution Satellite - Natural Color)"
           >
-            Dark
+            <Globe className="w-3 h-3" />
+            <span>Esri Satellite</span>
           </button>
           <button
-            onClick={() => setBaseLayer('terrain')}
-            className={`px-2 py-1 rounded-lg font-medium transition ${
-              baseLayer === 'terrain' ? 'bg-slate-800 text-emerald-400' : 'text-slate-400 hover:text-white'
+            onClick={() => setBaseLayer('topo')}
+            className={`px-2.5 py-1 rounded-lg font-medium transition ${
+              baseLayer === 'topo' ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'
             }`}
+            title="Esri World Topographic Map"
           >
             Topo
           </button>
           <button
             onClick={() => setBaseLayer('osm')}
-            className={`px-2 py-1 rounded-lg font-medium transition ${
-              baseLayer === 'osm' ? 'bg-slate-800 text-emerald-400' : 'text-slate-400 hover:text-white'
+            className={`px-2.5 py-1 rounded-lg font-medium transition ${
+              baseLayer === 'osm' ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'
             }`}
+            title="OpenStreetMap Street View"
           >
             Street
           </button>
         </div>
+
+        {/* Esri API Key Button */}
+        <button
+          onClick={() => setShowKeyModal(true)}
+          className="bg-slate-900/90 backdrop-blur-md border border-slate-700/80 hover:border-emerald-500/60 rounded-xl p-1.5 text-slate-300 hover:text-emerald-400 shadow-lg transition"
+          title="Configure Esri ArcGIS API Key"
+        >
+          <Key className="w-4 h-4" />
+        </button>
       </div>
+
+      {/* Esri API Key Modal / Popover */}
+      {showKeyModal && (
+        <div className="absolute top-16 right-5 z-[1001] w-80 bg-slate-950/95 backdrop-blur-md border border-slate-700 rounded-xl shadow-2xl p-3.5 text-xs text-slate-200">
+          <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-800">
+            <span className="font-bold text-white flex items-center gap-1.5">
+              <Key className="w-3.5 h-3.5 text-emerald-400" />
+              Esri World Imagery API Key
+            </span>
+            <button
+              onClick={() => setShowKeyModal(false)}
+              className="text-slate-400 hover:text-white font-bold"
+            >
+              ✕
+            </button>
+          </div>
+
+          <p className="text-[11px] text-slate-400 mb-2 leading-tight">
+            ArcGIS Location Platform API Key for Esri World Imagery high-resolution satellite tiles:
+          </p>
+
+          <input
+            type="text"
+            value={tempKey}
+            onChange={(e) => setTempKey(e.target.value)}
+            placeholder="AAPK..."
+            className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 font-mono text-[11px] text-white focus:outline-none focus:border-emerald-500 mb-2"
+          />
+
+          <div className="flex items-center justify-between">
+            <button
+              onClick={() => {
+                setTempKey(DEFAULT_ESRI_KEY);
+              }}
+              className="text-[10px] text-slate-400 hover:text-slate-200 underline"
+            >
+              Reset to Default Key
+            </button>
+            <button
+              onClick={handleSaveApiKey}
+              className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-semibold flex items-center gap-1 transition"
+            >
+              {keySaved ? <Check className="w-3 h-3" /> : null}
+              {keySaved ? "Saved!" : "Apply Key"}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Bottom-Left Simple Legend */}
       <MapLegend
