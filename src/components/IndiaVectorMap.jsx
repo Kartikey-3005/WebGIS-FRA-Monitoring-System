@@ -22,7 +22,7 @@ export default function IndiaVectorMap({
   const [hoveredState, setHoveredState] = useState(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [showClaimDots, setShowClaimDots] = useState(true);
-  const [showLabels, setShowLabels] = useState(true);
+  const [showLabels, setShowLabels] = useState(false);
 
   const handleMouseMove = (e) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -103,7 +103,7 @@ export default function IndiaVectorMap({
             <div className="bg-slate-950/85 backdrop-blur-md border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-slate-200 flex items-center gap-2 shadow-lg">
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
               <span className="font-semibold text-white">
-                Viewing Isolated State: <strong className="text-emerald-400">{selectedState.name} ({selectedState.code})</strong>
+                Viewing Isolated State: <strong className="text-emerald-400">{selectedState.code}</strong>
               </span>
             </div>
           </div>
@@ -168,7 +168,6 @@ export default function IndiaVectorMap({
                 key={state.id}
                 d={state.d}
                 id={state.id}
-                name={state.name}
                 fill={isSelected ? '#2563eb' : isHovered ? '#38bdf8' : '#5b84a6'}
                 stroke="#ffffff"
                 strokeWidth={isSelected ? "1.8" : isHovered ? "1.5" : "0.75"}
@@ -186,11 +185,7 @@ export default function IndiaVectorMap({
                 }}
                 onMouseEnter={() => setHoveredState(state)}
                 onMouseLeave={() => setHoveredState(null)}
-              >
-                <title>
-                  {isSelected ? `${state.name} (Click to return to All India Map)` : `Click to view only ${state.name}`}
-                </title>
-              </path>
+              />
             );
           })}
         </g>
@@ -326,10 +321,9 @@ export default function IndiaVectorMap({
         >
           <div className="flex items-center justify-between gap-2 border-b border-slate-800 pb-1.5 mb-1.5">
             <span className="font-bold text-sm text-white flex items-center gap-1.5">
-              <span className="px-1.5 py-0.2 rounded bg-blue-600 text-[10px] font-mono">
+              <span className="px-2 py-0.5 rounded bg-blue-600 text-xs font-mono font-bold">
                 {hoveredState.code}
               </span>
-              {hoveredState.name}
             </span>
             <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full ${
               hoveredState.aiAnalysis?.severity === 'critical' ? 'bg-rose-500/20 text-rose-300' :
@@ -360,7 +354,7 @@ export default function IndiaVectorMap({
           </div>
 
           <div className="mt-2 text-[10px] text-emerald-400 font-semibold pt-1.5 border-t border-slate-800/80">
-            👉 Click to isolate & show ONLY {hoveredState.name}
+            👉 Click to isolate & show ONLY {hoveredState.code}
           </div>
         </div>
       )}
@@ -370,7 +364,7 @@ export default function IndiaVectorMap({
         <Info className="w-3.5 h-3.5 text-indigo-400" />
         <span>
           {selectedState 
-            ? `Showing ONLY ${selectedState.name}. Click the state or button to return to All India map.` 
+            ? `Showing ONLY ${selectedState.code}. Click the state or button to return to All India map.` 
             : "Click on any state to hide the rest of India and show ONLY that state."}
         </span>
       </div>
