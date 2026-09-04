@@ -394,14 +394,41 @@ export const CURATED_ANOMALY_CLAIMS = (curatedClaimsGeoJson?.features || []).map
     vegetation_loss_index: p.vegetation_loss_index || 0,
     vegetationLossIndex: p.vegetation_loss_index || 0,
     anomaly_tags: p.anomaly_tags || [],
+    plot_polygon: p.plot_polygon || null,
+    plotPolygon: p.plot_polygon || null,
     coordinates: [coords[1], coords[0]], // [lat, lon] for Leaflet
     svgCoords: [400 + (coords[0] - 80) * 40, 500 + (coords[1] - 22) * 40],
     isAnomaly: p.district_id !== 'dist_d'
   };
 });
 
+// Cadastral polygon generator for national mock claims
+function generateCadastralPolygon(lat, lon, areaHa, seedStr) {
+  let hash = 0;
+  const str = String(seedStr || 'FRA');
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash * 31 + str.charCodeAt(i)) >>> 0;
+  }
+  const areaM2 = Math.max(1.0, parseFloat(areaHa) || 2.0) * 10000;
+  const side = Math.sqrt(areaM2);
+  const dLat = (side / 111000.0) / 2.0;
+  const dLon = (side / (111320.0 * Math.cos((lat * Math.PI) / 180.0))) / 2.0;
+
+  const skew1 = 0.85 + ((hash % 17) / 50.0);
+  const skew2 = 0.85 + (((hash >> 4) % 19) / 50.0);
+  const skew3 = 0.85 + (((hash >> 8) % 23) / 50.0);
+  const skew4 = 0.85 + (((hash >> 12) % 29) / 50.0);
+
+  return [
+    [+(lat - dLat * skew1).toFixed(6), +(lon - dLon * skew2).toFixed(6)],
+    [+(lat - dLat * skew3).toFixed(6), +(lon + dLon * skew4).toFixed(6)],
+    [+(lat + dLat * skew2).toFixed(6), +(lon + dLon * skew1).toFixed(6)],
+    [+(lat + dLat * skew4).toFixed(6), +(lon - dLon * skew3).toFixed(6)]
+  ];
+}
+
 // Mock Claims for all regions
-export const MOCK_CLAIMS = [
+const RAW_MOCK_CLAIMS = [
   ...CURATED_ANOMALY_CLAIMS,
   {
     id: "FRA-MP-001",
@@ -1060,6 +1087,17 @@ export const MOCK_CLAIMS = [
     isAnomaly: false
   }
 ];
+
+export const MOCK_CLAIMS = RAW_MOCK_CLAIMS.map(c => {
+  const polygon = c.plot_polygon || (
+    c.coordinates ? generateCadastralPolygon(c.coordinates[0], c.coordinates[1], c.areaHa || c.area_ha || 2.0, c.id) : null
+  );
+  return {
+    ...c,
+    plot_polygon: polygon,
+    plotPolygon: polygon
+  };
+});
 
 export const INDIA_STATES_GEOJSON = {
   type: "FeatureCollection",
