@@ -12,17 +12,13 @@ import {
   Users, 
   AlertTriangle, 
   RotateCcw,
-  Key,
-  Globe,
-  Settings,
-  Check
+  Globe
 } from 'lucide-react';
 import MapLegend from './MapLegend';
 import { 
   getEsriImageryUrl, 
   getEsriReferenceUrl, 
-  ESRI_ATTRIBUTION, 
-  DEFAULT_ESRI_KEY 
+  ESRI_ATTRIBUTION 
 } from '../config/esriConfig';
 
 // Controller to smoothly animate map camera
@@ -65,17 +61,13 @@ export default function WebGISMap({
   const [statusFilter, setStatusFilter] = useState('all');
   // Default to pure daylight satellite view (NO dark mode)
   const [baseLayer, setBaseLayer] = useState('satellite'); // 'satellite' | 'topo' | 'osm'
-  const [esriApiKey, setEsriApiKey] = useState(DEFAULT_ESRI_KEY);
-  const [showKeyModal, setShowKeyModal] = useState(false);
-  const [tempKey, setTempKey] = useState(DEFAULT_ESRI_KEY);
-  const [keySaved, setKeySaved] = useState(false);
   const geoJsonRef = useRef(null);
 
   // Basemap Tile Layers (Natural daylight colors - No dark filter on satellite)
   const basemapTiles = {
     satellite: {
-      url: getEsriImageryUrl(esriApiKey),
-      referenceUrl: getEsriReferenceUrl(esriApiKey),
+      url: getEsriImageryUrl(),
+      referenceUrl: getEsriReferenceUrl(),
       attribution: ESRI_ATTRIBUTION
     },
     topo: {
@@ -151,15 +143,6 @@ export default function WebGISMap({
     }
   };
 
-  const handleSaveApiKey = () => {
-    setEsriApiKey(tempKey);
-    setKeySaved(true);
-    setTimeout(() => {
-      setKeySaved(false);
-      setShowKeyModal(false);
-    }, 800);
-  };
-
   return (
     <div className="relative w-full h-full overflow-hidden bg-slate-900">
       <MapContainer
@@ -179,7 +162,7 @@ export default function WebGISMap({
 
         {/* Primary Basemap Tile Layer - Esri World Imagery (No Dark Mode!) */}
         <TileLayer
-          key={`${baseLayer}-${esriApiKey}`}
+          key={baseLayer}
           attribution={basemapTiles[baseLayer].attribution}
           url={basemapTiles[baseLayer].url}
           maxZoom={19}
@@ -188,7 +171,7 @@ export default function WebGISMap({
         {/* Optional Esri Boundary and Places Reference Overlay for Satellite */}
         {baseLayer === 'satellite' && basemapTiles.satellite.referenceUrl && (
           <TileLayer
-            key={`ref-${esriApiKey}`}
+            key="ref-layer"
             url={basemapTiles.satellite.referenceUrl}
             opacity={0.8}
             maxZoom={19}
@@ -343,64 +326,7 @@ export default function WebGISMap({
             Street
           </button>
         </div>
-
-        {/* Esri API Key Button */}
-        <button
-          onClick={() => setShowKeyModal(true)}
-          className="bg-slate-900/90 backdrop-blur-md border border-slate-700/80 hover:border-emerald-500/60 rounded-xl p-1.5 text-slate-300 hover:text-emerald-400 shadow-lg transition"
-          title="Configure Esri ArcGIS API Key"
-        >
-          <Key className="w-4 h-4" />
-        </button>
       </div>
-
-      {/* Esri API Key Modal / Popover */}
-      {showKeyModal && (
-        <div className="absolute top-16 right-5 z-[1001] w-80 bg-slate-950/95 backdrop-blur-md border border-slate-700 rounded-xl shadow-2xl p-3.5 text-xs text-slate-200">
-          <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-800">
-            <span className="font-bold text-white flex items-center gap-1.5">
-              <Key className="w-3.5 h-3.5 text-emerald-400" />
-              Esri World Imagery API Key
-            </span>
-            <button
-              onClick={() => setShowKeyModal(false)}
-              className="text-slate-400 hover:text-white font-bold"
-            >
-              ✕
-            </button>
-          </div>
-
-          <p className="text-[11px] text-slate-400 mb-2 leading-tight">
-            ArcGIS Location Platform API Key for Esri World Imagery high-resolution satellite tiles:
-          </p>
-
-          <input
-            type="text"
-            value={tempKey}
-            onChange={(e) => setTempKey(e.target.value)}
-            placeholder="AAPK..."
-            className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 font-mono text-[11px] text-white focus:outline-none focus:border-emerald-500 mb-2"
-          />
-
-          <div className="flex items-center justify-between">
-            <button
-              onClick={() => {
-                setTempKey(DEFAULT_ESRI_KEY);
-              }}
-              className="text-[10px] text-slate-400 hover:text-slate-200 underline"
-            >
-              Reset to Default Key
-            </button>
-            <button
-              onClick={handleSaveApiKey}
-              className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-semibold flex items-center gap-1 transition"
-            >
-              {keySaved ? <Check className="w-3 h-3" /> : null}
-              {keySaved ? "Saved!" : "Apply Key"}
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Bottom-Left Simple Legend */}
       <MapLegend
