@@ -128,16 +128,6 @@ export default function IndiaVectorMap({
           </button>
         )}
 
-        <button
-          onClick={() => setShowLabels(!showLabels)}
-          className={`px-2.5 py-1.5 rounded-xl text-xs font-medium border transition shadow ${
-            showLabels 
-              ? 'bg-slate-800 text-emerald-400 border-slate-700' 
-              : 'bg-slate-900/80 text-slate-400 border-slate-800'
-          }`}
-        >
-          {showLabels ? "Badges: ON" : "Badges: OFF"}
-        </button>
 
         <button
           onClick={() => setShowClaimDots(!showClaimDots)}
