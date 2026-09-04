@@ -3,6 +3,7 @@ import Header from './components/Header';
 import IndiaVectorMap from './components/IndiaVectorMap';
 import WebGISMap from './components/WebGISMap';
 import DecisionSidebar from './components/DecisionSidebar';
+import DistrictAIModal from './components/DistrictAIModal';
 import { ALL_INDIA_STATES, NATIONAL_SUMMARY, MOCK_CLAIMS, INDIA_STATES_GEOJSON } from './data/mockData';
 import { Map, Globe } from 'lucide-react';
 
@@ -11,6 +12,7 @@ export default function App() {
   const [activeClaim, setActiveClaim] = useState(null);
   const [resetTrigger, setResetTrigger] = useState(0);
   const [mapMode, setMapMode] = useState('vector'); // 'vector' (matches user's image) | 'satellite' (Leaflet)
+  const [isAiModalOpen, setIsAiModalOpen] = useState(false);
 
   const handleSelectState = (stateProps) => {
     // Match by code or id if needed
@@ -41,6 +43,7 @@ export default function App() {
         statesList={ALL_INDIA_STATES}
         onSelectState={handleSelectState}
         onResetAllIndia={handleResetAllIndia}
+        onOpenAiModal={() => setIsAiModalOpen(true)}
       />
 
       {/* Main Workspace (Map on Left ~68%, Sidebar on Right ~32%) */}
@@ -112,6 +115,12 @@ export default function App() {
           />
         </div>
       </main>
+
+      {/* District Gemini AI FastApi Decision Support Modal */}
+      <DistrictAIModal
+        isOpen={isAiModalOpen}
+        onClose={() => setIsAiModalOpen(false)}
+      />
     </div>
   );
 }
