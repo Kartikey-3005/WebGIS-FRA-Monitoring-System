@@ -14,7 +14,8 @@ export default function Header({
   selectedState = null, 
   statesList = [],
   onSelectState = () => {},
-  onResetAllIndia = () => {}
+  onResetAllIndia = () => {},
+  onOpenAiModal = () => {}
 }) {
   const { formattedDate, formattedTime } = useLiveClock();
 
@@ -86,11 +87,16 @@ export default function Header({
 
       {/* Right: AI Engine Status & Date/Time */}
       <div className="hidden md:flex items-center gap-3 text-xs">
-        {/* AI Status Badge */}
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-indigo-950/40 border border-indigo-500/30 text-indigo-200">
+        {/* District Gemini AI FastApi Trigger Button */}
+        <button
+          onClick={onOpenAiModal}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-indigo-900/60 to-purple-900/60 hover:from-indigo-800 hover:to-purple-800 border border-indigo-500/40 text-indigo-200 transition shadow cursor-pointer active:scale-95"
+          title="Open FastAPI + Gemini AI District Decision Support API"
+        >
           <Sparkles className="w-3.5 h-3.5 text-indigo-400 animate-pulse" />
-          <span className="text-[11px] font-medium">AI Anomaly Engine Active</span>
-        </div>
+          <span className="text-[11px] font-semibold text-white">District Gemini AI</span>
+          <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-indigo-500/30 text-indigo-300">FastAPI</span>
+        </button>
 
         {/* Live Clock */}
         <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800/60 border border-slate-700/50 text-slate-300 font-mono text-[11px]">
