@@ -119,11 +119,8 @@ function MapController({ selectedState, resetTrigger, activeClaim, onMapReady, o
         });
       }
     } else {
-      // Pan-India Overview (Entire country visible)
-      map.flyTo([22.5, 79.5], 5, {
-        animate: true,
-        duration: 1.2
-      });
+      // Pan-India Overview: instantly zoom out with zero animation, no effects
+      map.setView([22.5, 79.5], 5, { animate: false });
     }
   }, [selectedState, resetTrigger, activeClaim, map, statesGeoJson]);
 
@@ -177,13 +174,13 @@ export default function WebGISMap({
 
   const handleZoomOut = () => {
     if (mapInstance) {
-      mapInstance.zoomOut();
+      mapInstance.zoomOut(1, { animate: false });
     }
   };
 
   const handleFitIndia = () => {
     if (mapInstance) {
-      mapInstance.flyTo([22.5, 79.5], 5, { animate: true, duration: 1.0 });
+      mapInstance.setView([22.5, 79.5], 5, { animate: false });
     }
     onResetAllIndia();
   };
