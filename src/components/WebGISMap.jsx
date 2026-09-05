@@ -198,16 +198,10 @@ export default function WebGISMap({
     }
   };
 
-  // Detailed Realistic Districts: Filtered for active state or zoomed view
+  // Detailed Realistic Districts: Shown for the selected state
   const activeDistrictsGeoJson = useMemo(() => {
-    if (!indiaDistrictsGeoJson || !indiaDistrictsGeoJson.features) return null;
-    if (!selectedState) {
-      // Show district boundaries when zoomed in past level 6.5
-      if (currentZoom >= 6.5) {
-        return indiaDistrictsGeoJson;
-      }
-      return null;
-    }
+    if (!indiaDistrictsGeoJson || !indiaDistrictsGeoJson.features || !selectedState) return null;
+
     const stateCode = selectedState.code || (selectedState.id ? selectedState.id.replace('IN', '') : null);
     const stateName = (selectedState.name || '').toLowerCase();
     const matching = indiaDistrictsGeoJson.features.filter(f => {
@@ -220,26 +214,39 @@ export default function WebGISMap({
       type: 'FeatureCollection',
       features: matching
     };
-  }, [selectedState, currentZoom]);
+  }, [selectedState]);
 
-  // Filter claims based on state and status
-  const filteredClaims = claimsData.filter(claim => {
-    if (selectedState && claim.stateId) {
-      const match = claim.stateId === selectedState.id || 
-                    claim.stateId.replace('IN', '') === selectedState.code ||
-                    (claim.stateName && claim.stateName.toLowerCase() === (selectedState.name || '').toLowerCase());
-      if (!match) return false;
-    }
-    if (statusFilter !== 'all') {
-      if (statusFilter === 'delayed' && !(claim.status === 'delayed' || (claim.days_pending >= 300 || claim.daysPending >= 300))) {
-        return false;
+  // Filter claims: ONLY show dots when a state is clicked / selected
+  const filteredClaims = useMemo(() => {
+    if (!selectedState) return [];
+
+    const stateId = selectedState.id || (selectedState.code ? `IN${selectedState.code}` : null);
+    const stateCode = selectedState.code || (selectedState.id ? selectedState.id.replace('IN', '') : null);
+    const stateName = (selectedState.name || '').toLowerCase();
+
+    return claimsData.filter(claim => {
+      const claimStateId = claim.stateId || '';
+      const claimStateCode = claimStateId.replace('IN', '');
+      const claimStateName = (claim.stateName || '').toLowerCase();
+
+      const matchesState = 
+        (stateId && claimStateId === stateId) ||
+        (stateCode && claimStateCode === stateCode) ||
+        (stateName && claimStateName === stateName);
+
+      if (!matchesState) return false;
+
+      if (statusFilter !== 'all') {
+        if (statusFilter === 'delayed' && !(claim.status === 'delayed' || (claim.days_pending >= 300 || claim.daysPending >= 300))) {
+          return false;
+        }
+        if (statusFilter !== 'delayed' && claim.status !== statusFilter) {
+          return false;
+        }
       }
-      if (statusFilter !== 'delayed' && claim.status !== statusFilter) {
-        return false;
-      }
-    }
-    return true;
-  });
+      return true;
+    });
+  }, [claimsData, selectedState, statusFilter]);
 
   // Dynamic Mask: When a state is selected, mask out everything except that state
   const activeMaskGeoJson = useMemo(() => {
@@ -642,9 +649,9 @@ export default function WebGISMap({
           );
         })}
 
-        {/* Lakshadweep Islands Archipelago Markers (Visible in All-India or when Lakshadweep is selected) */}
-        {(!selectedState || selectedState.code === 'LD' || selectedState.id === 'INLD') && LAKSHADWEEP_ISLANDS.map((isl) => {
-          const isLdSelected = selectedState && (selectedState.id === 'INLD' || selectedState.code === 'LD');
+        {/* Lakshadweep Islands Archipelago Markers (Visible ONLY when Lakshadweep is selected) */}
+        {selectedState && (selectedState.code === 'LD' || selectedState.id === 'INLD') && LAKSHADWEEP_ISLANDS.map((isl) => {
+          const isLdSelected = true;
           return (
             <React.Fragment key={isl.name}>
               {/* Subtle outer halo for islands */}
