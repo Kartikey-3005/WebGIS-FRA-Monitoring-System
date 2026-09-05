@@ -1,5 +1,6 @@
 import indiaSvgData from './indiaSvgData.json';
 import realIndiaStatesGeoJson from './indiaStatesGeoJson.json';
+import indiaMaskGeoJson from './indiaMaskGeoJson.json';
 import curatedClaimsGeoJson from '../../backend/data/claims.json';
 
 // National FRA Summary
@@ -294,6 +295,39 @@ const STATE_STATS_OVERLAY = {
       confidenceScore: 94.5,
       riskIndex: "High (Score: 8.6/10)"
     }
+  },
+  INMN: {
+    totalClaims: 16,
+    approvedClaims: 6,
+    pendingClaims: 10,
+    delayedClaims: 3,
+    approvalRate: 37.5,
+    titledLandHa: 131.7,
+    totalForestAreaHa: 1659800,
+    districtsCount: 16,
+    activeVillages: 14,
+    tenureTypes: { ifr: 15, cfr: 1 },
+    tribes: "Kuki, Naga, Zomi, Meitei Pangal",
+    description: "Hill areas customary tribal land management systems.",
+    forestCoverKm2: "16,598 km²",
+    tribalPopulationPct: "35.1%",
+    criticalAlerts: 3,
+    mlAnomalies: 3,
+    alertMessage: "3 high-risk claims flagged by ML for field boundary verification. 10 pending review across 16 districts.",
+    center: [24.8, 93.9],
+    zoom: 8,
+    aiAnalysis: {
+      severity: "critical",
+      anomalyHeadline: "Hill Areas Customary Tribal Tenure Systems",
+      summary: "3 high-risk claims flagged by ML for field boundary verification. 10 pending review across 16 districts.",
+      rootCauses: [
+        "Hill Areas District Councils customary land boundaries unharmonized with state cadastral maps.",
+        "Delays in setting up Sub-Divisional (SDLC) quorum for remote village councils."
+      ],
+      recommendation: "Deploy mobile GPS surveyor teams to demarcate customary village boundaries across Senapati and Churachandpur.",
+      confidenceScore: 94.8,
+      riskIndex: "High (Score: 8.4/10)"
+    }
   }
 };
 
@@ -353,12 +387,37 @@ export const ALL_INDIA_STATES = indiaSvgData.map(s => {
     INGA: [15.3, 74.0],
   };
 
+  const districtsCount = overlay.districtsCount || Math.max(8, Math.round(10 + (s.d.length % 25)));
+  const activeVillages = overlay.activeVillages || Math.round(districtsCount * 0.9);
+  const totalClaims = overlay.totalClaims;
+  const approvedClaims = overlay.approvedClaims;
+  const pendingClaims = overlay.pendingClaims;
+  const delayedClaims = overlay.delayedClaims;
+  const criticalAlerts = overlay.criticalAlerts !== undefined ? overlay.criticalAlerts : (delayedClaims > 20000 ? 3 : delayedClaims > 5000 ? 1 : 0);
+  const mlAnomalies = overlay.mlAnomalies !== undefined ? overlay.mlAnomalies : Math.min(criticalAlerts + 1, 5);
+  const tenureTypes = overlay.tenureTypes || {
+    ifr: Math.max(1, Math.round(totalClaims * 0.9)),
+    cfr: Math.max(1, Math.round(totalClaims * 0.1))
+  };
+  const forestCoverKm2 = overlay.forestCoverKm2 || `${Math.round((overlay.totalForestAreaHa || 2500000) / 100).toLocaleString()} km²`;
+  const tribalPopulationPct = overlay.tribalPopulationPct || `${(20 + (s.d.length % 35)).toFixed(1)}%`;
+  const description = overlay.description || `Hill areas customary tribal land management systems and community forest resources.`;
+  const alertMessage = overlay.alertMessage || `${criticalAlerts} high-risk claims flagged by ML for field boundary verification. ${pendingClaims.toLocaleString()} pending review across ${districtsCount} districts.`;
+
   return {
     ...s,
     ...overlay,
+    districtsCount,
+    activeVillages,
+    tenureTypes,
+    forestCoverKm2,
+    tribalPopulationPct,
+    criticalAlerts,
+    mlAnomalies,
+    description,
+    alertMessage,
     center: overlay.center || stateCenters[s.id] || [22.0, 79.5],
     zoom: overlay.zoom || 7,
-    // ensure name is clean
     name: s.name === "Orissa" ? "Odisha" : (s.name === "Uttaranchal" || s.id === "INUT" || s.code === "UT") ? "Uttarakhand" : s.name
   };
 });
@@ -430,6 +489,269 @@ function generateCadastralPolygon(lat, lon, areaHa, seedStr) {
 // Mock Claims for all regions
 const RAW_MOCK_CLAIMS = [
   ...CURATED_ANOMALY_CLAIMS,
+  // Manipur 16 Authentic Monitored Claims (6 Approved, 10 Pending with 3 Anomalies, totaling 131.7 Ha)
+  {
+    id: "FRA-MN-001",
+    stateId: "INMN",
+    stateName: "Manipur",
+    districtName: "Churachandpur",
+    claimantName: "Khaikhohau Haokip",
+    tribe: "Kuki",
+    gramSabha: "Tuibong Village Council",
+    type: "individual",
+    status: "approved",
+    areaHa: 4.80,
+    daysPending: 180,
+    coordinates: [24.33, 93.68],
+    svgCoords: [730, 480],
+    isAnomaly: false
+  },
+  {
+    id: "FRA-MN-002",
+    stateId: "INMN",
+    stateName: "Manipur",
+    districtName: "Churachandpur",
+    claimantName: "Chunglenmang Kipgen",
+    tribe: "Kuki",
+    gramSabha: "Songpi Council",
+    type: "individual",
+    status: "approved",
+    areaHa: 3.20,
+    daysPending: 210,
+    coordinates: [24.35, 93.65],
+    svgCoords: [731, 482],
+    isAnomaly: false
+  },
+  {
+    id: "FRA-MN-003",
+    stateId: "INMN",
+    stateName: "Manipur",
+    districtName: "Senapati",
+    claimantName: "Poumai Naga CFR Collective",
+    tribe: "Naga (Poumai)",
+    gramSabha: "Oinam Hill Council",
+    type: "community",
+    status: "approved",
+    areaHa: 48.50,
+    daysPending: 240,
+    coordinates: [25.32, 94.02],
+    svgCoords: [740, 465],
+    isAnomaly: false
+  },
+  {
+    id: "FRA-MN-004",
+    stateId: "INMN",
+    stateName: "Manipur",
+    districtName: "Kangpokpi",
+    claimantName: "Thangboi Lhungdim",
+    tribe: "Kuki",
+    gramSabha: "Keithelmanbi Council",
+    type: "individual",
+    status: "approved",
+    areaHa: 2.90,
+    daysPending: 190,
+    coordinates: [24.98, 93.85],
+    svgCoords: [735, 475],
+    isAnomaly: false
+  },
+  {
+    id: "FRA-MN-005",
+    stateId: "INMN",
+    stateName: "Manipur",
+    districtName: "Ukhrul",
+    claimantName: "Tangkhul Shanshak CFR Council",
+    tribe: "Tangkhul Naga",
+    gramSabha: "Shanshak Council",
+    type: "individual",
+    status: "approved",
+    areaHa: 12.40,
+    daysPending: 220,
+    coordinates: [25.05, 94.35],
+    svgCoords: [745, 472],
+    isAnomaly: false
+  },
+  {
+    id: "FRA-MN-006",
+    stateId: "INMN",
+    stateName: "Manipur",
+    districtName: "Tamenglong",
+    claimantName: "Rongmei Traditional Forest Group",
+    tribe: "Rongmei Naga",
+    gramSabha: "Noney Forest Sabha",
+    type: "individual",
+    status: "approved",
+    areaHa: 8.50,
+    daysPending: 215,
+    coordinates: [24.85, 93.55],
+    svgCoords: [728, 478],
+    isAnomaly: false
+  },
+  {
+    id: "FRA-MN-007",
+    stateId: "INMN",
+    stateName: "Manipur",
+    districtName: "Churachandpur",
+    claimantName: "Paominthang Doungel",
+    tribe: "Kuki",
+    gramSabha: "Henglep Hill Sabha",
+    type: "individual",
+    status: "delayed",
+    areaHa: 5.20,
+    daysPending: 1140,
+    coordinates: [24.40, 93.52],
+    svgCoords: [729, 483],
+    delayReason: "Pending SDLC quorum approval for Hill boundary survey.",
+    anomaly_tags: ["HIGH_PENDING_DELAY", "SDLC_QUORUM_DEFICIT"],
+    isAnomaly: true
+  },
+  {
+    id: "FRA-MN-008",
+    stateId: "INMN",
+    stateName: "Manipur",
+    districtName: "Senapati",
+    claimantName: "Mao Naga Customary Clan",
+    tribe: "Naga (Mao)",
+    gramSabha: "Tadubi Forest Council",
+    type: "individual",
+    status: "delayed",
+    areaHa: 14.80,
+    daysPending: 1220,
+    coordinates: [25.42, 94.12],
+    svgCoords: [742, 462],
+    delayReason: "Inter-departmental overlap between Reserved Forest and Customary Clan land.",
+    anomaly_tags: ["FOREST_RESERVE_OVERLAP"],
+    isAnomaly: true
+  },
+  {
+    id: "FRA-MN-009",
+    stateId: "INMN",
+    stateName: "Manipur",
+    districtName: "Kangpokpi",
+    claimantName: "Ngamkholet Vaiphei",
+    tribe: "Vaiphei",
+    gramSabha: "Saikul Village Council",
+    type: "individual",
+    status: "delayed",
+    areaHa: 3.80,
+    daysPending: 1080,
+    coordinates: [24.95, 94.02],
+    svgCoords: [738, 473],
+    delayReason: "Lack of GPS cadastral survey map submission.",
+    anomaly_tags: ["CADASTRAL_SURVEY_DELAY"],
+    isAnomaly: true
+  },
+  {
+    id: "FRA-MN-010",
+    stateId: "INMN",
+    stateName: "Manipur",
+    districtName: "Tengnoupal",
+    claimantName: "Lhunkhomang Baite",
+    tribe: "Kuki",
+    gramSabha: "Moreh Border Forest Sabha",
+    type: "individual",
+    status: "pending",
+    areaHa: 4.10,
+    daysPending: 280,
+    coordinates: [24.25, 94.28],
+    svgCoords: [742, 488],
+    isAnomaly: false
+  },
+  {
+    id: "FRA-MN-011",
+    stateId: "INMN",
+    stateName: "Manipur",
+    districtName: "Kamjong",
+    claimantName: "Achanzim Kasar",
+    tribe: "Tangkhul Naga",
+    gramSabha: "Kasom Khullen Council",
+    type: "individual",
+    status: "pending",
+    areaHa: 3.50,
+    daysPending: 260,
+    coordinates: [24.72, 94.42],
+    svgCoords: [746, 481],
+    isAnomaly: false
+  },
+  {
+    id: "FRA-MN-012",
+    stateId: "INMN",
+    stateName: "Manipur",
+    districtName: "Pherzawl",
+    claimantName: "Zomi Land Right Forum",
+    tribe: "Zomi",
+    gramSabha: "Thanlon Village Sabha",
+    type: "individual",
+    status: "pending",
+    areaHa: 4.60,
+    daysPending: 245,
+    coordinates: [24.28, 93.30],
+    svgCoords: [725, 486],
+    isAnomaly: false
+  },
+  {
+    id: "FRA-MN-013",
+    stateId: "INMN",
+    stateName: "Manipur",
+    districtName: "Noney",
+    claimantName: "Gaithaoba Kamei",
+    tribe: "Inpui Naga",
+    gramSabha: "Haochong Hill Council",
+    type: "individual",
+    status: "pending",
+    areaHa: 3.30,
+    daysPending: 210,
+    coordinates: [24.78, 93.60],
+    svgCoords: [730, 479],
+    isAnomaly: false
+  },
+  {
+    id: "FRA-MN-014",
+    stateId: "INMN",
+    stateName: "Manipur",
+    districtName: "Chandel",
+    claimantName: "Maring Forest Dwellers Union",
+    tribe: "Maring",
+    gramSabha: "Machhi Forest Sabha",
+    type: "individual",
+    status: "pending",
+    areaHa: 5.10,
+    daysPending: 290,
+    coordinates: [24.45, 94.15],
+    svgCoords: [740, 484],
+    isAnomaly: false
+  },
+  {
+    id: "FRA-MN-015",
+    stateId: "INMN",
+    stateName: "Manipur",
+    districtName: "Imphal East",
+    claimantName: "Yairipok Traditional Dwellers",
+    tribe: "Meitei Pangal",
+    gramSabha: "Andro Hill Fringe Sabha",
+    type: "individual",
+    status: "pending",
+    areaHa: 3.90,
+    daysPending: 195,
+    coordinates: [24.78, 94.05],
+    svgCoords: [738, 478],
+    isAnomaly: false
+  },
+  {
+    id: "FRA-MN-016",
+    stateId: "INMN",
+    stateName: "Manipur",
+    districtName: "Ukhrul",
+    claimantName: "Vashum Kaping",
+    tribe: "Tangkhul Naga",
+    gramSabha: "Chingai Council",
+    type: "individual",
+    status: "pending",
+    areaHa: 4.20,
+    daysPending: 270,
+    coordinates: [25.28, 94.48],
+    svgCoords: [748, 468],
+    isAnomaly: false
+  },
   {
     id: "FRA-MP-001",
     stateId: "INMP",
@@ -1113,3 +1435,5 @@ export const INDIA_STATES_GEOJSON = {
     };
   })
 };
+
+export const INDIA_MASK_GEOJSON = indiaMaskGeoJson;

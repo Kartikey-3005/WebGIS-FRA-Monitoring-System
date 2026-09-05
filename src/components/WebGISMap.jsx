@@ -18,9 +18,13 @@ import {
   Clock,
   ShieldCheck,
   Ban,
-  Layers
+  Layers,
+  Plus,
+  Minus,
+  Maximize2
 } from 'lucide-react';
 import MapLegend from './MapLegend';
+import indiaMaskGeoJson from '../data/indiaMaskGeoJson.json';
 import { 
   getEsriImageryUrl, 
   getEsriReferenceUrl, 
@@ -28,9 +32,28 @@ import {
 } from '../config/esriConfig';
 import { fetchDistricts } from '../services/fraApi';
 
-// Controller to smoothly animate map camera
-function MapController({ selectedState, resetTrigger, activeClaim }) {
+// Controller to smoothly animate map camera and expose map instance & zoom level
+function MapController({ selectedState, resetTrigger, activeClaim, onMapReady, onZoomChange }) {
   const map = useMap();
+
+  useEffect(() => {
+    if (onMapReady) {
+      onMapReady(map);
+    }
+  }, [map, onMapReady]);
+
+  useEffect(() => {
+    const handleZoom = () => {
+      if (onZoomChange) {
+        onZoomChange(map.getZoom());
+      }
+    };
+    map.on('zoomend', handleZoom);
+    handleZoom();
+    return () => {
+      map.off('zoomend', handleZoom);
+    };
+  }, [map, onZoomChange]);
 
   useEffect(() => {
     if (activeClaim && activeClaim.coordinates) {
@@ -64,14 +87,55 @@ export default function WebGISMap({
   onResetAllIndia = () => {},
   resetTrigger = 0,
   activeClaim = null,
-  onSelectClaim = () => {}
+  onSelectClaim = () => {},
+  theme = {}
 }) {
+  const t = {
+    maskColor: theme?.maskColor || '#080402',
+    stateStroke: theme?.stateStroke || '#dfcca9',
+    stateHover: theme?.stateHover || '#fef08a',
+    surface: theme?.surface || '#120a06',
+    surfaceMuted: theme?.surfaceMuted || '#1a0e08',
+    surfaceBorder: theme?.surfaceBorder || '#452615',
+    borderLight: theme?.borderLight || '#55341e',
+    textPrimary: theme?.textPrimary || '#ffffff',
+    textSecondary: theme?.textSecondary || '#dfcca9',
+    textMuted: theme?.textMuted || '#9c7d61',
+    accent: theme?.accent || '#ea580c',
+    pillBg: theme?.pillBg || 'rgba(20, 11, 6, 0.90)',
+    pillBorder: theme?.pillBorder || '#452615',
+    buttonColor: theme?.buttonColor || '#ea580c'
+  };
+
   const [statusFilter, setStatusFilter] = useState('all');
   const [baseLayer, setBaseLayer] = useState('satellite'); // 'satellite' | 'topo' | 'osm'
-  const [showParcels, setShowParcels] = useState(true);
+  const [showParcels, setShowParcels] = useState(false);
+  const [showLegend, setShowLegend] = useState(false);
+  const [hoveredState, setHoveredState] = useState(null);
   const [anomalyDistrictsGeoJson, setAnomalyDistrictsGeoJson] = useState(null);
+  const [mapInstance, setMapInstance] = useState(null);
+  const [currentZoom, setCurrentZoom] = useState(5);
   const geoJsonRef = useRef(null);
   const districtGeoJsonRef = useRef(null);
+
+  const handleZoomIn = () => {
+    if (mapInstance) {
+      mapInstance.zoomIn();
+    }
+  };
+
+  const handleZoomOut = () => {
+    if (mapInstance) {
+      mapInstance.zoomOut();
+    }
+  };
+
+  const handleFitIndia = () => {
+    if (mapInstance) {
+      mapInstance.flyTo([22.5, 79.5], 5, { animate: true, duration: 1.0 });
+    }
+    onResetAllIndia();
+  };
 
   // Basemap Tile Layers (Satellite and Street)
   const basemapTiles = {
@@ -118,41 +182,46 @@ export default function WebGISMap({
     return true;
   });
 
-  // State Boundary Styling
+  // State Boundary Styling matching user's reference image and active theme
   const getStateStyle = (feature) => {
     const isSelected = selectedState && (
       selectedState.id === feature.id || 
       selectedState.id === feature.properties?.id ||
       selectedState.code === feature.properties?.code
     );
+    const isHovered = hoveredState && (
+      hoveredState.id === feature.id ||
+      hoveredState.id === feature.properties?.id ||
+      hoveredState.code === feature.properties?.code
+    );
 
-    if (selectedState) {
-      if (isSelected) {
-        return {
-          fillColor: '#2563eb',
-          fillOpacity: 0.15,
-          color: '#60a5fa',
-          weight: 2.2,
-          dashArray: '3, 3',
-          opacity: 0.9,
-        };
-      }
+    if (isSelected) {
       return {
-        fillColor: '#000000',
-        fillOpacity: 0,
+        fillColor: t.accent,
+        fillOpacity: 0.16,
         color: '#ffffff',
-        weight: 0.5,
-        opacity: 0.2,
+        weight: 2.2,
+        opacity: 1.0,
       };
     }
 
+    if (isHovered) {
+      return {
+        fillColor: t.stateHover,
+        fillOpacity: 0.12,
+        color: t.stateHover,
+        weight: 2.0,
+        opacity: 1.0,
+      };
+    }
+
+    // Delicate state border matching user reference image & theme
     return {
-      fillColor: '#10b981',
-      fillOpacity: 0.02,
-      color: '#ffffff',
-      weight: 0.8,
-      dashArray: '2, 2',
-      opacity: 0.5,
+      fillColor: '#000000',
+      fillOpacity: 0.001,
+      color: t.stateStroke,
+      weight: 1.15,
+      opacity: 0.88,
     };
   };
 
@@ -161,7 +230,6 @@ export default function WebGISMap({
     const flag = feature.properties?.anomaly_flag;
     switch (flag) {
       case 'HIGH_PENDING_DELAY':
-        // Red for administrative delay bottleneck
         return {
           fillColor: '#ef4444',
           fillOpacity: 0.20,
@@ -170,7 +238,6 @@ export default function WebGISMap({
           dashArray: '4, 4'
         };
       case 'ABNORMAL_REJECTION_SPIKE':
-        // Orange / Amber for rejection spike
         return {
           fillColor: '#f97316',
           fillOpacity: 0.18,
@@ -178,7 +245,6 @@ export default function WebGISMap({
           weight: 2.6
         };
       case 'FOREST_COVER_LOSS_ON_CLAIM':
-        // Deep Crimson / Red for encroachment & deforestation
         return {
           fillColor: '#b91c1c',
           fillOpacity: 0.26,
@@ -188,7 +254,6 @@ export default function WebGISMap({
         };
       case 'NORMAL':
       default:
-        // Slate / Gray for benchmark control group
         return {
           fillColor: '#64748b',
           fillOpacity: 0.10,
@@ -198,14 +263,23 @@ export default function WebGISMap({
     }
   };
 
-  // State Event Listeners
+  // State Event Listeners: smooth hover and click to enter state view
   const onEachState = (feature, layer) => {
     layer.on({
-      click: () => onSelectState(feature.properties),
+      click: () => {
+        const props = feature.properties;
+        if (selectedState && (selectedState.id === props.id || selectedState.code === props.code)) {
+          onResetAllIndia();
+        } else {
+          onSelectState(props);
+        }
+      },
       mouseover: (e) => {
-        e.target.setStyle({ fillOpacity: 0.22, weight: 2.2, color: '#38bdf8' });
+        setHoveredState(feature.properties);
+        e.target.setStyle({ fillOpacity: 0.12, weight: 2.0, color: '#fef08a' });
       },
       mouseout: (e) => {
+        setHoveredState(null);
         if (geoJsonRef.current) {
           geoJsonRef.current.resetStyle(e.target);
         }
@@ -263,23 +337,25 @@ export default function WebGISMap({
   };
 
   return (
-    <div className="relative w-full h-full overflow-hidden bg-slate-900">
+    <div className="relative w-full h-full overflow-hidden bg-[#0a0604]">
       <MapContainer
-        center={[22.3, 81.2]}
-        zoom={6}
+        center={[22.5, 79.5]}
+        zoom={5}
         minZoom={4}
-        maxZoom={18}
+        maxZoom={19}
         scrollWheelZoom={true}
-        className="w-full h-full z-10"
+        className="w-full h-full z-10 bg-[#0a0604]"
         zoomControl={false}
       >
         <MapController 
           selectedState={selectedState} 
           resetTrigger={resetTrigger}
           activeClaim={activeClaim}
+          onMapReady={setMapInstance}
+          onZoomChange={setCurrentZoom}
         />
 
-        {/* Primary Basemap Tile Layer - Esri World Imagery */}
+        {/* Primary Basemap Tile Layer - Esri World Imagery Satellite */}
         <TileLayer
           key={baseLayer}
           attribution={basemapTiles[baseLayer].attribution}
@@ -287,17 +363,21 @@ export default function WebGISMap({
           maxZoom={19}
         />
 
-        {/* Esri Places Overlay */}
-        {baseLayer === 'satellite' && basemapTiles.satellite.referenceUrl && (
-          <TileLayer
-            key="ref-layer"
-            url={basemapTiles.satellite.referenceUrl}
-            opacity={0.8}
-            maxZoom={19}
-          />
-        )}
+        {/* World Inverted Mask: Mask non-India territories with theme background */}
+        <GeoJSON
+          key={`india-inverted-mask-${t.maskColor}`}
+          data={indiaMaskGeoJson}
+          style={{
+            fillColor: t.maskColor,
+            fillOpacity: 1.0,
+            color: t.maskColor,
+            weight: 0.5,
+            opacity: 1.0
+          }}
+          interactive={false}
+        />
 
-        {/* India States Boundary Layer */}
+        {/* India States Boundary Layer: Delicate tan/beige outlines */}
         <GeoJSON
           key={`states-geojson-${selectedState ? selectedState.id : 'all'}`}
           ref={geoJsonRef}
@@ -475,62 +555,153 @@ export default function WebGISMap({
         })}
       </MapContainer>
 
-      {/* Top-Left: Central View & Cadastral Parcels Toggle */}
+      {/* Top-Left: Navigation & Controls */}
       <div className="absolute top-5 left-5 z-[1000] flex items-center gap-2">
-        <button
-          onClick={onResetAllIndia}
-          className="bg-slate-900/90 hover:bg-slate-800 backdrop-blur-md border border-slate-700/80 hover:border-slate-600 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-200 hover:text-white flex items-center gap-1.5 shadow-xl transition"
-          title="Reset to Central View"
-        >
-          <RotateCcw className="w-3.5 h-3.5 text-emerald-400" />
-          <span>Central View</span>
-        </button>
+        {selectedState && (
+          <button
+            onClick={onResetAllIndia}
+            className="bg-[#180e08]/90 hover:bg-[#2c1a10] text-[#dfcca9] hover:text-white border border-[#4a2e1b] hover:border-[#7c4d2d] rounded-xl px-3.5 py-1.5 text-xs font-mono font-medium flex items-center gap-2 shadow-2xl transition"
+            title="Return to full India overview"
+          >
+            <RotateCcw className="w-3.5 h-3.5 text-amber-400" />
+            <span>Return to All-India</span>
+          </button>
+        )}
 
         <button
           onClick={() => setShowParcels(prev => !prev)}
-          className={`backdrop-blur-md border rounded-xl px-3 py-1.5 text-xs font-semibold flex items-center gap-1.5 shadow-xl transition ${
+          className={`backdrop-blur-md border rounded-xl px-3 py-1.5 text-xs font-mono font-medium flex items-center gap-1.5 shadow-xl transition ${
             showParcels
-              ? 'bg-emerald-950/80 border-emerald-500/60 text-emerald-300'
-              : 'bg-slate-900/90 border-slate-700/80 text-slate-400 hover:text-white'
+              ? 'bg-[#22130b]/90 border-[#85532f] text-amber-300'
+              : 'bg-[#180e08]/80 border-[#382012] text-[#9c7d61] hover:text-[#dfcca9]'
           }`}
           title="Toggle Cadastral Land Parcel Boundaries"
         >
-          <Layers className="w-3.5 h-3.5 text-emerald-400" />
+          <Layers className="w-3.5 h-3.5 text-amber-400" />
           <span>Cadastral Parcels</span>
-          <span className={`w-1.5 h-1.5 rounded-full ${showParcels ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'}`} />
+          <span className={`w-1.5 h-1.5 rounded-full ${showParcels ? 'bg-amber-400 animate-pulse' : 'bg-[#55341e]'}`} />
+        </button>
+
+        <button
+          onClick={() => setShowLegend(prev => !prev)}
+          className={`backdrop-blur-md border rounded-xl px-3 py-1.5 text-xs font-mono font-medium flex items-center gap-1.5 shadow-xl transition ${
+            showLegend
+              ? 'bg-[#22130b]/90 border-[#85532f] text-amber-300'
+              : 'bg-[#180e08]/80 border-[#382012] text-[#9c7d61] hover:text-[#dfcca9]'
+          }`}
+          title="Toggle Anomaly & Status Legend"
+        >
+          <span>Legend</span>
         </button>
       </div>
 
-      {/* Top-Right: Basemap Switcher (Satellite & Street - Topo removed) */}
-      <div className="absolute top-5 right-5 z-[1000] flex items-center gap-2">
-        <div className="bg-slate-900/90 backdrop-blur-md border border-slate-700/80 rounded-xl shadow-xl p-1 flex items-center gap-1 text-xs">
+      {/* Front-end Zoom Controls (Top-Left matching user reference screenshot) */}
+      <div 
+        className="absolute top-6 left-6 z-[1000] flex flex-col rounded-lg shadow-2xl overflow-hidden border backdrop-blur-md"
+        style={{
+          backgroundColor: t.pillBg,
+          borderColor: t.pillBorder
+        }}
+      >
+        <button
+          onClick={handleZoomIn}
+          className="w-8 h-8 flex items-center justify-center text-white/90 hover:text-white hover:bg-white/10 transition border-b"
+          style={{ borderColor: t.surfaceBorder }}
+          title="Zoom In (+)"
+          aria-label="Zoom In"
+        >
+          <Plus className="w-4 h-4" />
+        </button>
+
+        <button
+          onClick={handleZoomOut}
+          className="w-8 h-8 flex items-center justify-center text-white/90 hover:text-white hover:bg-white/10 transition"
+          style={{ borderColor: t.surfaceBorder }}
+          title="Zoom Out (-)"
+          aria-label="Zoom Out"
+        >
+          <Minus className="w-4 h-4" />
+        </button>
+      </div>
+
+      {/* Top-Right: Basemap Switcher */}
+      <div className="absolute top-6 right-6 z-[1000] flex items-center gap-2">
+        <div 
+          className="backdrop-blur-md border rounded-xl shadow-xl p-1 flex items-center gap-1 text-xs"
+          style={{
+            backgroundColor: t.pillBg,
+            borderColor: t.pillBorder
+          }}
+        >
           <button
             onClick={() => setBaseLayer('satellite')}
-            className={`px-3 py-1 rounded-lg font-medium transition flex items-center gap-1.5 ${
-              baseLayer === 'satellite' ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'
-            }`}
+            className="px-2.5 py-1 rounded-lg font-mono text-[11px] transition flex items-center gap-1.5"
+            style={{
+              backgroundColor: baseLayer === 'satellite' ? t.surfaceMuted : 'transparent',
+              color: baseLayer === 'satellite' ? '#ffffff' : t.textMuted,
+              border: baseLayer === 'satellite' ? `1px solid ${t.borderLight}` : '1px solid transparent'
+            }}
           >
-            <Globe className="w-3.5 h-3.5" />
+            <Globe className="w-3 h-3" />
             <span>Satellite</span>
           </button>
           <button
             onClick={() => setBaseLayer('osm')}
-            className={`px-3 py-1 rounded-lg font-medium transition ${
-              baseLayer === 'osm' ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-400 hover:text-white'
-            }`}
+            className="px-2.5 py-1 rounded-lg font-mono text-[11px] transition"
+            style={{
+              backgroundColor: baseLayer === 'osm' ? t.surfaceMuted : 'transparent',
+              color: baseLayer === 'osm' ? '#ffffff' : t.textMuted,
+              border: baseLayer === 'osm' ? `1px solid ${t.borderLight}` : '1px solid transparent'
+            }}
           >
             Street
           </button>
         </div>
       </div>
 
-      {/* Bottom-Left Anomaly Color Map Legend */}
-      <MapLegend
-        statusFilter={statusFilter}
-        setStatusFilter={setStatusFilter}
-        claimsCount={filteredClaims.length}
-        totalClaims={claimsData.length}
-      />
+      {/* Bottom-Left Information Pill matching user's image EXACTLY */}
+      <div className="absolute bottom-6 left-6 z-[1000] pointer-events-none select-none">
+        <div 
+          className="rounded-full px-4 py-1.5 text-xs font-mono shadow-2xl tracking-wide flex items-center gap-2 border backdrop-blur-md"
+          style={{
+            backgroundColor: t.pillBg,
+            borderColor: t.pillBorder,
+            color: t.textSecondary
+          }}
+        >
+          {hoveredState ? (
+            <>
+              <span className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: t.accent }} />
+              <span className="font-semibold text-white">{hoveredState.name}</span>
+              <span style={{ color: t.textMuted }}>•</span>
+              <span>Click to enter state view</span>
+            </>
+          ) : selectedState ? (
+            <>
+              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: t.accent }} />
+              <span className="font-semibold text-white">{selectedState.name}</span>
+              <span style={{ color: t.textMuted }}>•</span>
+              <span>Click to enter state view</span>
+            </>
+          ) : (
+            <>
+              <span>Hover a state to view details</span>
+              <span style={{ color: t.textMuted }}>•</span>
+              <span>Click to enter state view</span>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Optional Anomaly Color Map Legend */}
+      {showLegend && (
+        <MapLegend
+          statusFilter={statusFilter}
+          setStatusFilter={setStatusFilter}
+          claimsCount={filteredClaims.length}
+          totalClaims={claimsData.length}
+        />
+      )}
     </div>
   );
 }
