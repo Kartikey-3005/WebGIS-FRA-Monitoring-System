@@ -32,6 +32,16 @@ import {
 } from '../config/esriConfig';
 import { fetchDistricts } from '../services/fraApi';
 
+const LAKSHADWEEP_ISLANDS = [
+  { name: 'Kavaratti', coords: [10.566, 72.641], isCapital: true },
+  { name: 'Agatti', coords: [10.853, 72.190] },
+  { name: 'Andrott', coords: [10.817, 73.680] },
+  { name: 'Minicoy', coords: [8.283, 73.048] },
+  { name: 'Amini', coords: [11.124, 72.731] },
+  { name: 'Kadmat', coords: [11.233, 72.780] },
+  { name: 'Kalpeni', coords: [10.083, 73.633] }
+];
+
 // Controller to smoothly animate map camera and expose map instance & zoom level
 function MapController({ selectedState, resetTrigger, activeClaim, onMapReady, onZoomChange }) {
   const map = useMap();
@@ -337,14 +347,20 @@ export default function WebGISMap({
   };
 
   return (
-    <div className="relative w-full h-full overflow-hidden bg-[#0a0604]">
+    <div 
+      className="relative w-full h-full overflow-hidden"
+      style={{ backgroundColor: t.maskColor }}
+    >
       <MapContainer
         center={[22.5, 79.5]}
         zoom={5}
-        minZoom={4}
+        minZoom={4.2}
         maxZoom={19}
+        maxBounds={[ [2.0, 60.0], [39.0, 102.0] ]}
+        maxBoundsViscosity={1.0}
         scrollWheelZoom={true}
-        className="w-full h-full z-10 bg-[#0a0604]"
+        className="w-full h-full z-10"
+        style={{ backgroundColor: t.maskColor }}
         zoomControl={false}
       >
         <MapController 
@@ -355,12 +371,15 @@ export default function WebGISMap({
           onZoomChange={setCurrentZoom}
         />
 
-        {/* Primary Basemap Tile Layer - Esri World Imagery Satellite */}
+        {/* Primary Basemap Tile Layer - Esri World Imagery restricted strictly to India */}
         <TileLayer
-          key={baseLayer}
+          key={`${baseLayer}-${t.maskColor}`}
           attribution={basemapTiles[baseLayer].attribution}
           url={basemapTiles[baseLayer].url}
           maxZoom={19}
+          minZoom={4.2}
+          noWrap={true}
+          bounds={[ [4.0, 65.0], [38.5, 99.5] ]}
         />
 
         {/* World Inverted Mask: Mask non-India territories with theme background */}
@@ -553,47 +572,61 @@ export default function WebGISMap({
             </React.Fragment>
           );
         })}
+
+        {/* Lakshadweep Islands Archipelago Markers & Interaction */}
+        {LAKSHADWEEP_ISLANDS.map((isl) => {
+          const isLdSelected = selectedState && (selectedState.id === 'INLD' || selectedState.code === 'LD');
+          return (
+            <React.Fragment key={isl.name}>
+              {/* Subtle outer halo for islands */}
+              <CircleMarker
+                center={isl.coords}
+                radius={currentZoom >= 7 ? 12 : (isl.isCapital || isLdSelected ? 8 : 6)}
+                pathOptions={{
+                  color: isLdSelected ? t.accent : t.stateStroke,
+                  fillColor: t.accent,
+                  fillOpacity: isLdSelected ? 0.35 : 0.15,
+                  weight: 1,
+                  dashArray: '2, 2'
+                }}
+                interactive={false}
+              />
+              {/* Island Point Marker */}
+              <CircleMarker
+                center={isl.coords}
+                radius={currentZoom >= 7 ? 6 : (isl.isCapital ? 4.5 : 3.5)}
+                eventHandlers={{
+                  click: () => {
+                    const ld = {
+                      id: 'INLD',
+                      code: 'LD',
+                      name: 'Lakshadweep',
+                      center: [10.56, 72.64],
+                      zoom: 9
+                    };
+                    onSelectState(ld);
+                  },
+                  mouseover: () => setHoveredState({ id: 'INLD', code: 'LD', name: 'Lakshadweep' }),
+                  mouseout: () => setHoveredState(null)
+                }}
+                pathOptions={{
+                  fillColor: isLdSelected ? t.accent : '#ffffff',
+                  fillOpacity: 0.95,
+                  color: isLdSelected ? '#ffffff' : t.stateStroke,
+                  weight: 2
+                }}
+              >
+                <Popup className="custom-leaflet-popup">
+                  <div className="text-slate-200 text-xs font-mono">
+                    <div className="font-bold text-white mb-0.5">{isl.name} Island</div>
+                    <div className="text-[10px]" style={{ color: t.textSecondary }}>Lakshadweep Union Territory</div>
+                  </div>
+                </Popup>
+              </CircleMarker>
+            </React.Fragment>
+          );
+        })}
       </MapContainer>
-
-      {/* Top-Left: Navigation & Controls */}
-      <div className="absolute top-5 left-5 z-[1000] flex items-center gap-2">
-        {selectedState && (
-          <button
-            onClick={onResetAllIndia}
-            className="bg-[#180e08]/90 hover:bg-[#2c1a10] text-[#dfcca9] hover:text-white border border-[#4a2e1b] hover:border-[#7c4d2d] rounded-xl px-3.5 py-1.5 text-xs font-mono font-medium flex items-center gap-2 shadow-2xl transition"
-            title="Return to full India overview"
-          >
-            <RotateCcw className="w-3.5 h-3.5 text-amber-400" />
-            <span>Return to All-India</span>
-          </button>
-        )}
-
-        <button
-          onClick={() => setShowParcels(prev => !prev)}
-          className={`backdrop-blur-md border rounded-xl px-3 py-1.5 text-xs font-mono font-medium flex items-center gap-1.5 shadow-xl transition ${
-            showParcels
-              ? 'bg-[#22130b]/90 border-[#85532f] text-amber-300'
-              : 'bg-[#180e08]/80 border-[#382012] text-[#9c7d61] hover:text-[#dfcca9]'
-          }`}
-          title="Toggle Cadastral Land Parcel Boundaries"
-        >
-          <Layers className="w-3.5 h-3.5 text-amber-400" />
-          <span>Cadastral Parcels</span>
-          <span className={`w-1.5 h-1.5 rounded-full ${showParcels ? 'bg-amber-400 animate-pulse' : 'bg-[#55341e]'}`} />
-        </button>
-
-        <button
-          onClick={() => setShowLegend(prev => !prev)}
-          className={`backdrop-blur-md border rounded-xl px-3 py-1.5 text-xs font-mono font-medium flex items-center gap-1.5 shadow-xl transition ${
-            showLegend
-              ? 'bg-[#22130b]/90 border-[#85532f] text-amber-300'
-              : 'bg-[#180e08]/80 border-[#382012] text-[#9c7d61] hover:text-[#dfcca9]'
-          }`}
-          title="Toggle Anomaly & Status Legend"
-        >
-          <span>Legend</span>
-        </button>
-      </div>
 
       {/* Front-end Zoom Controls (Top-Left matching user reference screenshot) */}
       <div 
@@ -692,16 +725,6 @@ export default function WebGISMap({
           )}
         </div>
       </div>
-
-      {/* Optional Anomaly Color Map Legend */}
-      {showLegend && (
-        <MapLegend
-          statusFilter={statusFilter}
-          setStatusFilter={setStatusFilter}
-          claimsCount={filteredClaims.length}
-          totalClaims={claimsData.length}
-        />
-      )}
     </div>
   );
 }

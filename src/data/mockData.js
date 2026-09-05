@@ -328,6 +328,39 @@ const STATE_STATS_OVERLAY = {
       confidenceScore: 94.8,
       riskIndex: "High (Score: 8.4/10)"
     }
+  },
+  INLD: {
+    totalClaims: 12,
+    approvedClaims: 5,
+    pendingClaims: 7,
+    delayedClaims: 1,
+    approvalRate: 41.7,
+    titledLandHa: 89.4,
+    totalForestAreaHa: 2710,
+    districtsCount: 1,
+    activeVillages: 10,
+    tenureTypes: { ifr: 10, cfr: 2 },
+    tribes: "Koya, Malmi, Melacheri (Scheduled Tribes)",
+    description: "Coral archipelago customary coastal and coconut tenure systems.",
+    forestCoverKm2: "27.1 km²",
+    tribalPopulationPct: "94.8%",
+    criticalAlerts: 1,
+    mlAnomalies: 1,
+    alertMessage: "1 coastal customary claim flagged for inter-island boundary survey. 7 pending review.",
+    center: [10.56, 72.64],
+    zoom: 9,
+    aiAnalysis: {
+      severity: "nominal",
+      anomalyHeadline: "Coastal Customary Tenure & Coconut Groves",
+      summary: "1 coastal customary claim flagged for inter-island boundary survey. 7 pending review across 10 inhabited islands.",
+      rootCauses: [
+        "Traditional customary Pandaram land rights transitioning to digitized cadastral records.",
+        "Coastal regulation zone overlaps with village coconut groves."
+      ],
+      recommendation: "Conduct joint coastal demarcation with Island Panchayats.",
+      confidenceScore: 95.1,
+      riskIndex: "Low (Score: 2.8/10)"
+    }
   }
 };
 
@@ -385,6 +418,8 @@ export const ALL_INDIA_STATES = indiaSvgData.map(s => {
     INNL: [26.1, 94.5],
     INML: [25.5, 91.3],
     INGA: [15.3, 74.0],
+    INLD: [10.56, 72.64],
+    INAN: [11.74, 92.65],
   };
 
   const districtsCount = overlay.districtsCount || Math.max(8, Math.round(10 + (s.d.length % 25)));
@@ -750,6 +785,73 @@ const RAW_MOCK_CLAIMS = [
     daysPending: 270,
     coordinates: [25.28, 94.48],
     svgCoords: [748, 468],
+    isAnomaly: false
+  },
+  // Lakshadweep Authentic Claims
+  {
+    id: "FRA-LD-001",
+    stateId: "INLD",
+    stateName: "Lakshadweep",
+    districtName: "Lakshadweep",
+    claimantName: "Sayed Mohammed Koya",
+    tribe: "Koya (ST)",
+    gramSabha: "Kavaratti Island Dweep Panchayat",
+    type: "individual",
+    status: "approved",
+    areaHa: 3.20,
+    daysPending: 150,
+    coordinates: [10.566, 72.641],
+    svgCoords: [233, 912],
+    isAnomaly: false
+  },
+  {
+    id: "FRA-LD-002",
+    stateId: "INLD",
+    stateName: "Lakshadweep",
+    districtName: "Lakshadweep",
+    claimantName: "Agatti Island Traditional Coconut Cooperative",
+    tribe: "Malmi (ST)",
+    gramSabha: "Agatti Dweep Panchayat",
+    type: "community",
+    status: "pending",
+    areaHa: 8.50,
+    daysPending: 240,
+    coordinates: [10.853, 72.190],
+    svgCoords: [230, 910],
+    isAnomaly: false
+  },
+  {
+    id: "FRA-LD-003",
+    stateId: "INLD",
+    stateName: "Lakshadweep",
+    districtName: "Lakshadweep",
+    claimantName: "Minicoy Customary Village Council",
+    tribe: "Mahls (ST)",
+    gramSabha: "Minicoy Atholhu Council",
+    type: "community",
+    status: "delayed",
+    areaHa: 5.10,
+    daysPending: 420,
+    coordinates: [8.283, 73.048],
+    svgCoords: [235, 930],
+    isAnomaly: true,
+    anomaly_type: "BOUNDARY_DISPUTE",
+    anomaly_tags: ["High Risk", "Customary Boundary Overlap"]
+  },
+  {
+    id: "FRA-LD-004",
+    stateId: "INLD",
+    stateName: "Lakshadweep",
+    districtName: "Lakshadweep",
+    claimantName: "Hamza Melacheri",
+    tribe: "Melacheri (ST)",
+    gramSabha: "Andrott Island Council",
+    type: "individual",
+    status: "approved",
+    areaHa: 4.40,
+    daysPending: 170,
+    coordinates: [10.817, 73.680],
+    svgCoords: [237, 911],
     isAnomaly: false
   },
   {

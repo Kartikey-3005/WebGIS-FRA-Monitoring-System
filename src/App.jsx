@@ -185,35 +185,6 @@ export default function App() {
               </div>
             )}
           </div>
-
-          {/* AI Decision Engine Button */}
-          <button
-            onClick={() => setIsAiModalOpen(true)}
-            className="px-3 py-1.5 rounded-lg text-xs font-mono font-medium flex items-center gap-1.5 border shadow-lg transition hover:bg-white/10"
-            style={{
-              backgroundColor: currentTheme.surfaceMuted,
-              borderColor: currentTheme.borderLight,
-              color: currentTheme.textSecondary
-            }}
-            title="Open Gemini AI Anomaly Intelligence Engine"
-          >
-            <Sparkles className="w-3.5 h-3.5" style={{ color: currentTheme.accent }} />
-            <span className="hidden md:inline">AI Engine</span>
-          </button>
-
-          {/* Drawer Toggle for Extra Analytics */}
-          <button
-            onClick={() => setIsSidebarOpen(prev => !prev)}
-            className="p-1.5 rounded-lg border transition hover:bg-white/10"
-            style={{
-              backgroundColor: currentTheme.surfaceMuted,
-              borderColor: currentTheme.surfaceBorder,
-              color: currentTheme.textSecondary
-            }}
-            title="Toggle Detailed National Analytics Drawer"
-          >
-            <BarChart3 className="w-4 h-4" />
-          </button>
         </div>
       </header>
 
