@@ -23,13 +23,13 @@ export default function StateInspectionSidebar({
     approvedClaims: 6,
     pendingClaims: 10,
     delayedClaims: 3,
-    criticalAlerts: 3,
-    mlAnomalies: 3,
+    scheduledReviews: 3,
+    fieldSurveys: 3,
     tenureTypes: { ifr: 15, cfr: 1 },
     forestCoverKm2: '16,598 km²',
     tribalPopulationPct: '35.1%',
     description: 'Hill areas customary tribal land management systems.',
-    alertMessage: '3 high-risk claims flagged by ML for field boundary verification. 10 pending review across 16 districts.'
+    alertMessage: '3 cadastral units scheduled for field boundary verification. 10 claims under administrative review across 16 districts.'
   };
 
   // State claims count
@@ -177,19 +177,19 @@ export default function StateInspectionSidebar({
             <span className="font-bold text-white">{activeState.pendingClaims || 10}</span>
           </div>
 
-          {/* ML Detected Anomalies */}
+          {/* Field Verification Pending */}
           <div className="flex items-center justify-between text-xs font-mono">
-            <span style={{ color: theme.textSecondary, opacity: 0.85 }}>ML Detected Anomalies:</span>
-            <span className="font-bold text-white">{activeState.mlAnomalies !== undefined ? activeState.mlAnomalies : 3}</span>
+            <span style={{ color: theme.textSecondary, opacity: 0.85 }}>Field Verification Pending:</span>
+            <span className="font-bold text-white">{activeState.fieldSurveys ?? activeState.delayedClaims ?? 3}</span>
           </div>
 
-          {/* Critical Alerts (High Risk) */}
+          {/* Scheduled DLC Reviews */}
           <div className="flex items-center justify-between text-xs font-mono">
-            <span className="flex items-center gap-1.5 text-rose-400 font-medium">
-              <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
-              Critical Alerts (High Risk):
+            <span className="flex items-center gap-1.5 font-medium" style={{ color: theme.textSecondary }}>
+              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: theme.accent }} />
+              Scheduled DLC Reviews:
             </span>
-            <span className="font-bold text-rose-400">{activeState.criticalAlerts !== undefined ? activeState.criticalAlerts : 3}</span>
+            <span className="font-bold text-white">{activeState.scheduledReviews ?? activeState.criticalAlerts ?? 3}</span>
           </div>
         </div>
 
@@ -219,7 +219,7 @@ export default function StateInspectionSidebar({
           </div>
         </div>
 
-        {/* Alert Description Banner */}
+        {/* Administrative Summary Banner */}
         <div 
           className="p-3 rounded-xl border text-[11px] leading-relaxed font-sans"
           style={{ 
@@ -229,7 +229,9 @@ export default function StateInspectionSidebar({
             opacity: 0.95
           }}
         >
-          {activeState.alertMessage || `${activeState.criticalAlerts || 3} high-risk claims flagged by ML for field boundary verification. ${(activeState.pendingClaims || 10).toLocaleString()} pending review across ${activeState.districtsCount || 16} districts.`}
+          {activeState.alertMessage 
+            ? activeState.alertMessage.replace(/⚠️|Critical Anomaly:|Anomaly Flagged:|Anomaly Detected:|flagged by ML/gi, '').trim()
+            : `${activeState.name} cadastral surveys and community forest resource recognition active across ${activeState.districtsCount || 16} districts.`}
         </div>
 
         {/* Big Orange / Theme Action Button */}

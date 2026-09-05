@@ -13,7 +13,7 @@ export default function MapLegend({
       <div className="flex items-center justify-between gap-3 pb-1.5 border-b border-slate-800">
         <div className="flex items-center gap-1.5 font-bold text-slate-200">
           <Layers className="w-3.5 h-3.5 text-emerald-400" />
-          <span>Claims & Anomaly Layer</span>
+          <span>Claims & Tenure Layer</span>
         </div>
         <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-slate-800 text-slate-300">
           {claimsCount} plotted

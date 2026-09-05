@@ -9,13 +9,13 @@ export default function AIAnomalyCard({ selectedState, nationalSummary }) {
       badge: 'bg-rose-500/20 text-rose-300 border-rose-500/40',
       icon: <AlertTriangle className="w-3.5 h-3.5 text-rose-400" />,
       border: 'border-rose-500/40',
-      tag: 'CRITICAL ANOMALY'
+      tag: 'PRIORITY VERIFICATION'
     },
     warning: {
       badge: 'bg-amber-500/20 text-amber-300 border-amber-500/40',
       icon: <AlertCircle className="w-3.5 h-3.5 text-amber-400" />,
       border: 'border-amber-500/40',
-      tag: 'ATTENTION REQUIRED'
+      tag: 'FIELD REVIEW TARGET'
     },
     nominal: {
       badge: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40',
@@ -37,13 +37,13 @@ export default function AIAnomalyCard({ selectedState, nationalSummary }) {
           </div>
           <div>
             <h3 className="text-xs font-bold text-white tracking-tight flex items-center gap-1.5">
-              AI Anomaly Analysis
+              Tenure Verification Insights
               <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
-                LLM Insights
+                Decision Support
               </span>
             </h3>
             <p className="text-[10px] text-slate-400">
-              {selectedState ? `${selectedState.name} Diagnostics` : "National Pan-India Pattern"}
+              {selectedState ? `${selectedState.name} Overview` : "National Pan-India Pattern"}
             </p>
           </div>
         </div>
@@ -61,7 +61,7 @@ export default function AIAnomalyCard({ selectedState, nationalSummary }) {
           <span>{analysis.anomalyHeadline}</span>
         </div>
         <p className="text-xs text-slate-300 leading-relaxed">
-          {analysis.summary}
+          {analysis.summary ? analysis.summary.replace(/⚠️|Critical Anomaly:|Anomaly Flagged:|Anomaly Detected:|National Anomaly Flag:/gi, '').trim() : ''}
         </p>
       </div>
 

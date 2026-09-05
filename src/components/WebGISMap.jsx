@@ -24,12 +24,12 @@ import {
   Maximize2
 } from 'lucide-react';
 import indiaMaskGeoJson from '../data/indiaMaskGeoJson.json';
+import indiaDistrictsGeoJson from '../data/indiaDistrictsGeoJson.json';
 import { 
   getEsriImageryUrl, 
   getEsriReferenceUrl, 
   ESRI_ATTRIBUTION 
 } from '../config/esriConfig';
-import { fetchDistricts } from '../services/fraApi';
 
 const LAKSHADWEEP_ISLANDS = [
   { name: 'Kavaratti', coords: [10.566, 72.641], isCapital: true },
@@ -160,7 +160,7 @@ export default function WebGISMap({
   const [showParcels, setShowParcels] = useState(false);
   const [showLegend, setShowLegend] = useState(false);
   const [hoveredState, setHoveredState] = useState(null);
-  const [anomalyDistrictsGeoJson, setAnomalyDistrictsGeoJson] = useState(null);
+  const [hoveredDistrict, setHoveredDistrict] = useState(null);
   const [mapInstance, setMapInstance] = useState(null);
   const [currentZoom, setCurrentZoom] = useState(5);
   const geoJsonRef = useRef(null);
@@ -198,18 +198,29 @@ export default function WebGISMap({
     }
   };
 
-  // Fetch live anomaly district boundaries from FastAPI backend on load
-  useEffect(() => {
-    fetchDistricts()
-      .then((data) => {
-        if (data && data.features && data.features.length > 0) {
-          setAnomalyDistrictsGeoJson(data);
-        }
-      })
-      .catch((err) => {
-        console.warn('Backend districts offline or unreachable:', err);
-      });
-  }, [resetTrigger]);
+  // Detailed Realistic Districts: Filtered for active state or zoomed view
+  const activeDistrictsGeoJson = useMemo(() => {
+    if (!indiaDistrictsGeoJson || !indiaDistrictsGeoJson.features) return null;
+    if (!selectedState) {
+      // Show district boundaries when zoomed in past level 6.5
+      if (currentZoom >= 6.5) {
+        return indiaDistrictsGeoJson;
+      }
+      return null;
+    }
+    const stateCode = selectedState.code || (selectedState.id ? selectedState.id.replace('IN', '') : null);
+    const stateName = (selectedState.name || '').toLowerCase();
+    const matching = indiaDistrictsGeoJson.features.filter(f => {
+      const p = f.properties || {};
+      return (stateCode && p.state_code === stateCode) ||
+             (p.state && p.state.toLowerCase() === stateName);
+    });
+    if (matching.length === 0) return null;
+    return {
+      type: 'FeatureCollection',
+      features: matching
+    };
+  }, [selectedState, currentZoom]);
 
   // Filter claims based on state and status
   const filteredClaims = claimsData.filter(claim => {
@@ -333,42 +344,52 @@ export default function WebGISMap({
     };
   };
 
-  // Anomaly District Boundary Styling (Distinct colors per anomaly flag)
-  const getAnomalyDistrictStyle = (feature) => {
-    const flag = feature.properties?.anomaly_flag;
-    switch (flag) {
-      case 'HIGH_PENDING_DELAY':
-        return {
-          fillColor: '#ef4444',
+  // Detailed Administrative District Boundary Styling (Clean, delicate lines)
+  const getDistrictStyle = (feature) => {
+    return {
+      fillColor: t.accent,
+      fillOpacity: 0.04,
+      color: t.borderLight || '#9c7d61',
+      weight: 1.2,
+      opacity: 0.85,
+      dashArray: '3, 4'
+    };
+  };
+
+  // District Hover & Information Tooltip
+  const onEachDistrict = (feature, layer) => {
+    const p = feature.properties || {};
+    layer.on({
+      mouseover: (e) => {
+        setHoveredDistrict(p);
+        e.target.setStyle({
           fillOpacity: 0.20,
-          color: '#ef4444',
-          weight: 2.8,
-          dashArray: '4, 4'
-        };
-      case 'ABNORMAL_REJECTION_SPIKE':
-        return {
-          fillColor: '#f97316',
-          fillOpacity: 0.18,
-          color: '#f97316',
-          weight: 2.6
-        };
-      case 'FOREST_COVER_LOSS_ON_CLAIM':
-        return {
-          fillColor: '#b91c1c',
-          fillOpacity: 0.26,
-          color: '#dc2626',
-          weight: 3.0,
-          dashArray: '2, 3'
-        };
-      case 'NORMAL':
-      default:
-        return {
-          fillColor: '#64748b',
-          fillOpacity: 0.10,
-          color: '#94a3b8',
-          weight: 1.8
-        };
-    }
+          weight: 2.0,
+          color: t.stateHover || '#fef08a'
+        });
+      },
+      mouseout: (e) => {
+        setHoveredDistrict(null);
+        if (districtGeoJsonRef.current) {
+          districtGeoJsonRef.current.resetStyle(e.target);
+        }
+      }
+    });
+
+    const areaKm2 = p.total_area_ha ? Math.round(p.total_area_ha / 100).toLocaleString() : null;
+    layer.bindTooltip(
+      `<div style="font-family: ui-sans-serif, system-ui; font-size: 11px; line-height: 1.4;">
+        <div style="font-weight: 700; color: #ffffff; font-size: 12px; margin-bottom: 2px;">${p.name || 'District'} District</div>
+        <div style="color: #cbd5e1; font-size: 10px; margin-bottom: 4px;">State: ${p.state || 'India'}</div>
+        <div style="display: flex; flex-direction: column; gap: 2px; color: #94a3b8; font-size: 10px;">
+          <span>Forest Cover: <strong style="color: #34d399;">${p.forest_cover_pct || 65}%</strong></span>
+          <span>Tribal Population: <strong style="color: #60a5fa;">${p.tribal_population_pct || 40}%</strong></span>
+          ${areaKm2 ? `<span>Area: <strong style="color: #f1f5f9;">${areaKm2} km²</strong></span>` : ''}
+          ${p.claims_count ? `<span>Monitored Units: <strong style="color: #f59e0b;">${p.claims_count}</strong></span>` : ''}
+        </div>
+      </div>`,
+      { sticky: true, opacity: 0.95, className: 'district-leaflet-tooltip' }
+    );
   };
 
   // State Event Listeners: smooth hover and click to enter state view
@@ -395,53 +416,25 @@ export default function WebGISMap({
     });
   };
 
-  // Anomaly District Layer Tooltips & Popups
-  const onEachAnomalyDistrict = (feature, layer) => {
-    const props = feature.properties;
-    layer.bindTooltip(
-      `<div class="font-sans text-xs">
-        <strong>${props.name}</strong><br/>
-        <span class="text-rose-400 font-semibold">${props.anomaly_flag}</span>
-      </div>`,
-      { sticky: true, opacity: 0.9 }
-    );
-  };
-
-  // Claim Marker Color Mapping with Anomaly Logic
-  // - Red for delays / encroachments
-  // - Green for approved
-  // - Gray for benchmark
-  // - Orange/Amber for rejection spike & pending
+  // Clean Administrative Marker Colors (No anomaly alarms or pulsing rings)
+  // - Green: Approved Titles
+  // - Indigo: Community Forest Resource (CFR)
+  // - Rose: Disputed / In Review
+  // - Amber: Pending Field Verification
   const getMarkerColor = (claim) => {
     const status = claim.status;
-    const vegLoss = claim.vegetation_loss_index || claim.vegetationLossIndex || 0;
-    const isHighLoss = vegLoss >= 0.20 || (claim.anomaly_tags && claim.anomaly_tags.includes('FOREST_COVER_LOSS_ON_CLAIM'));
-    const days = claim.days_pending || claim.daysPending || 0;
-    const isDelay = status === 'delayed' || days >= 300 || (claim.anomaly_tags && claim.anomaly_tags.includes('DELAY_EXCEEDS_STATE_AVG'));
-    const isBenchmark = claim.district_id === 'dist_d' || (claim.anomaly_tags && claim.anomaly_tags.includes('NORMAL'));
+    const isCommunity = (claim.claimant_type || claim.type || '').toLowerCase() === 'community';
 
-    if (isHighLoss) {
-      // Red / Crimson for Encroachment / Canopy Deforestation
-      return { fill: '#dc2626', border: '#991b1b', pulse: true, label: 'Encroachment / Loss' };
-    }
-    if (isDelay) {
-      // Red for Long Bureaucratic Delays
-      return { fill: '#ef4444', border: '#b91c1c', pulse: true, label: 'Delay Bottleneck' };
-    }
     if (status === 'approved') {
-      // Green for Approved Claims
-      return { fill: '#10b981', border: '#059669', pulse: false, label: 'Approved' };
+      return { fill: '#10b981', border: '#059669', label: 'Approved' };
+    }
+    if (isCommunity) {
+      return { fill: '#6366f1', border: '#4338ca', label: 'Community CFR' };
     }
     if (status === 'rejected') {
-      // Amber/Orange for Rejected / Rejection Spike
-      return { fill: '#f97316', border: '#c2410c', pulse: false, label: 'Rejected' };
+      return { fill: '#f43f5e', border: '#be123c', label: 'Rejected' };
     }
-    if (isBenchmark) {
-      // Gray for Normal Benchmark Control
-      return { fill: '#94a3b8', border: '#64748b', pulse: false, label: 'Benchmark' };
-    }
-    // Default Pending
-    return { fill: '#f59e0b', border: '#d97706', pulse: false, label: 'Pending' };
+    return { fill: '#f59e0b', border: '#d97706', label: 'Pending Verification' };
   };
 
   return (
@@ -469,7 +462,6 @@ export default function WebGISMap({
           onZoomChange={setCurrentZoom}
           statesGeoJson={statesGeoJson}
         />
-
         {/* Primary Basemap Tile Layer - Esri World Imagery Satellite (Smooth zoom, zero glitches) */}
         <TileLayer
           key={baseLayer}
@@ -478,6 +470,18 @@ export default function WebGISMap({
           maxZoom={19}
           noWrap={true}
         />
+
+        {/* Esri Reference Overlay: High-detail place names, district boundaries, topography, and roads on satellite */}
+        {baseLayer === 'satellite' && (
+          <TileLayer
+            key="esri-reference-overlay"
+            url={getEsriReferenceUrl()}
+            attribution=""
+            maxZoom={19}
+            opacity={0.82}
+            zIndex={400}
+          />
+        )}
 
         {/* Dynamic Inverted Mask: Smoothly isolates selected state or entire India */}
         <GeoJSON
@@ -502,14 +506,14 @@ export default function WebGISMap({
           onEachFeature={onEachState}
         />
 
-        {/* 4 Targeted Anomaly District Boundary Polygons Layer */}
-        {anomalyDistrictsGeoJson && (
+        {/* Detailed Administrative District Boundaries Layer */}
+        {activeDistrictsGeoJson && (
           <GeoJSON
-            key={`anomaly-districts-${anomalyDistrictsGeoJson.features?.length}`}
+            key={`districts-${selectedState ? (selectedState.code || selectedState.id) : 'all'}-${activeDistrictsGeoJson.features?.length}-${t.maskColor}`}
             ref={districtGeoJsonRef}
-            data={anomalyDistrictsGeoJson}
-            style={getAnomalyDistrictStyle}
-            onEachFeature={onEachAnomalyDistrict}
+            data={activeDistrictsGeoJson}
+            style={getDistrictStyle}
+            onEachFeature={onEachDistrict}
           />
         )}
 
@@ -522,7 +526,6 @@ export default function WebGISMap({
           const claimId = claim.claim_id || claim.id;
           const isCurrentActive = activeClaim && (activeClaim.id === claimId || activeClaim.claim_id === claimId);
           const isCommunity = (claim.claimant_type || claim.type || '').toLowerCase() === 'community';
-          const vegLoss = claim.vegetation_loss_index || claim.vegetationLossIndex || 0;
           const daysPending = claim.days_pending || claim.daysPending || 0;
 
           return (
@@ -544,15 +547,15 @@ export default function WebGISMap({
                 />
               )}
 
-              {/* Outer pulsing ring for critical anomaly / actively inspected claims */}
-              {(colors.pulse || isCurrentActive) && (
+              {/* Selection Halo for Active Selected Claim */}
+              {isCurrentActive && (
                 <CircleMarker
                   center={coords}
-                  radius={isCurrentActive ? 16 : 12}
+                  radius={14}
                   pathOptions={{
-                    color: colors.fill,
-                    fillColor: colors.fill,
-                    fillOpacity: 0.35,
+                    color: '#38bdf8',
+                    fillColor: '#38bdf8',
+                    fillOpacity: 0.25,
                     weight: 2,
                     dashArray: '3, 3'
                   }}
@@ -562,7 +565,7 @@ export default function WebGISMap({
               {/* Main Claim Circle Marker */}
               <CircleMarker
                 center={coords}
-                radius={isCommunity ? 8 : 6}
+                radius={isCommunity ? 7.5 : 5.5}
                 eventHandlers={{
                   click: () => onSelectClaim && onSelectClaim(claim)
                 }}
@@ -570,7 +573,7 @@ export default function WebGISMap({
                   fillColor: colors.fill,
                   fillOpacity: 0.95,
                   color: isCurrentActive ? '#ffffff' : colors.border,
-                  weight: isCurrentActive ? 3 : 1.5,
+                  weight: isCurrentActive ? 2.8 : 1.2,
                 }}
               >
                 <Popup className="custom-leaflet-popup">
@@ -599,7 +602,7 @@ export default function WebGISMap({
                       <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded capitalize ${
                         claim.status === 'approved' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' :
                         claim.status === 'pending' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' :
-                        'bg-rose-500/20 text-rose-300 border border-rose-500/40'
+                        'bg-slate-700/50 text-slate-300 border border-slate-600'
                       }`}>
                         {claim.status}
                       </span>
@@ -620,49 +623,18 @@ export default function WebGISMap({
                       </span>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-1 text-[10px] mb-1.5">
+                    <div className="grid grid-cols-2 gap-1 text-[10px] mb-0.5">
                       <div className="bg-slate-900/80 p-1.5 rounded border border-slate-800">
                         <span className="text-slate-400 block text-[9px]">District</span>
-                        <span className="font-semibold text-slate-200 uppercase">{claim.district_id || claim.districtName}</span>
+                        <span className="font-semibold text-slate-200 uppercase">{claim.district_id || claim.districtName || 'Territory'}</span>
                       </div>
                       <div className="bg-slate-900/80 p-1.5 rounded border border-slate-800">
-                        <span className="text-slate-400 block text-[9px]">Days Waiting</span>
-                        <span className={`font-bold ${daysPending > 300 ? 'text-rose-400' : 'text-emerald-400'}`}>
+                        <span className="text-slate-400 block text-[9px]">Verification Age</span>
+                        <span className="font-bold text-slate-200">
                           {daysPending} days
                         </span>
                       </div>
                     </div>
-
-                    {/* Vegetation Loss Alert if present */}
-                    {vegLoss > 0 && (
-                      <div className={`p-1.5 rounded text-[10px] mb-1.5 flex items-center justify-between border ${
-                        vegLoss >= 0.20 
-                          ? 'bg-rose-950/40 border-rose-500/40 text-rose-200' 
-                          : 'bg-slate-900/80 border-slate-800 text-slate-300'
-                      }`}>
-                        <span className="flex items-center gap-1 font-semibold">
-                          <Flame className="w-3 h-3 text-rose-400" />
-                          Vegetation Loss:
-                        </span>
-                        <span className="font-bold text-rose-300 font-mono">
-                          {(vegLoss * 100).toFixed(1)}%
-                        </span>
-                      </div>
-                    )}
-
-                    {/* Anomaly tags */}
-                    {claim.anomaly_tags && claim.anomaly_tags.length > 0 && (
-                      <div className="pt-1 border-t border-slate-800/80 flex flex-wrap gap-1">
-                        {claim.anomaly_tags.map((tag, idx) => (
-                          <span 
-                            key={idx} 
-                            className="text-[8px] font-mono font-semibold px-1 py-0.2 rounded bg-rose-500/15 text-rose-300 border border-rose-500/30"
-                          >
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
-                    )}
                   </div>
                 </Popup>
               </CircleMarker>
@@ -803,7 +775,16 @@ export default function WebGISMap({
           }}
           title={selectedState ? "Click to return to All-India overview" : undefined}
         >
-          {hoveredState ? (
+          {hoveredDistrict ? (
+            <>
+              <span className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: t.accent }} />
+              <span className="font-semibold text-white">{hoveredDistrict.name} District</span>
+              <span style={{ color: t.textMuted }}>•</span>
+              <span style={{ color: '#34d399' }}>Forest: {hoveredDistrict.forest_cover_pct}%</span>
+              <span style={{ color: t.textMuted }}>•</span>
+              <span style={{ color: '#60a5fa' }}>Tribal: {hoveredDistrict.tribal_population_pct}%</span>
+            </>
+          ) : hoveredState ? (
             <>
               <span className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: t.accent }} />
               <span className="font-semibold text-white">{hoveredState.name}</span>
