@@ -16,9 +16,8 @@ import {
 } from 'lucide-react';
 
 export default function App() {
-  // Default to Manipur (MN) to match the user's reference screenshot immediately on load
-  const manipurState = ALL_INDIA_STATES.find(s => s.code === 'MN') || ALL_INDIA_STATES[0];
-  const [selectedState, setSelectedState] = useState(manipurState);
+  // Start with All-India overview so full map is visible, and clicking any state isolates and zooms that state
+  const [selectedState, setSelectedState] = useState(null);
   const [activeClaim, setActiveClaim] = useState(null);
   const [resetTrigger, setResetTrigger] = useState(0);
 

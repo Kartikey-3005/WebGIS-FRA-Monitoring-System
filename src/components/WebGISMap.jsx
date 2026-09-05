@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { 
   MapContainer, 
   TileLayer, 
@@ -13,7 +13,7 @@ import {
   Users, 
   AlertTriangle, 
   RotateCcw,
-  Globe,
+  Globe, 
   Flame,
   Clock,
   ShieldCheck,
@@ -23,7 +23,6 @@ import {
   Minus,
   Maximize2
 } from 'lucide-react';
-import MapLegend from './MapLegend';
 import indiaMaskGeoJson from '../data/indiaMaskGeoJson.json';
 import { 
   getEsriImageryUrl, 
@@ -42,8 +41,31 @@ const LAKSHADWEEP_ISLANDS = [
   { name: 'Kalpeni', coords: [10.083, 73.633] }
 ];
 
+// Helper to calculate exact bounding box of any state feature for perfect auto-framing
+function getFeatureBounds(feature) {
+  if (!feature || !feature.geometry || !feature.geometry.coordinates) return null;
+  const geom = feature.geometry;
+  const allCoords = [];
+  if (geom.type === 'Polygon') {
+    allCoords.push(...geom.coordinates[0]);
+  } else if (geom.type === 'MultiPolygon') {
+    for (const poly of geom.coordinates) {
+      if (poly && poly[0]) {
+        allCoords.push(...poly[0]);
+      }
+    }
+  }
+  if (allCoords.length === 0) return null;
+  const lons = allCoords.map(c => c[0]);
+  const lats = allCoords.map(c => c[1]);
+  return [
+    [Math.min(...lats), Math.min(...lons)],
+    [Math.max(...lats), Math.max(...lons)]
+  ];
+}
+
 // Controller to smoothly animate map camera and expose map instance & zoom level
-function MapController({ selectedState, resetTrigger, activeClaim, onMapReady, onZoomChange }) {
+function MapController({ selectedState, resetTrigger, activeClaim, onMapReady, onZoomChange, statesGeoJson }) {
   const map = useMap();
 
   useEffect(() => {
@@ -72,19 +94,38 @@ function MapController({ selectedState, resetTrigger, activeClaim, onMapReady, o
         animate: true,
         duration: 1.2
       });
-    } else if (selectedState && selectedState.center) {
-      map.flyTo(selectedState.center, selectedState.zoom || 7, {
-        animate: true,
-        duration: 1.2
-      });
+    } else if (selectedState) {
+      // Find the state's exact polygon feature in statesGeoJson for perfect framing
+      const feat = statesGeoJson?.features?.find(f =>
+        f.id === selectedState.id ||
+        f.properties?.id === selectedState.id ||
+        f.properties?.code === selectedState.code ||
+        f.properties?.name?.toLowerCase() === (selectedState.name || '').toLowerCase()
+      );
+
+      const bounds = getFeatureBounds(feat);
+      if (bounds) {
+        const isSmallTerritory = selectedState.code === 'LD' || selectedState.code === 'GA' || selectedState.code === 'PY';
+        map.fitBounds(bounds, {
+          padding: [45, 45],
+          maxZoom: isSmallTerritory ? 10.5 : 9.5,
+          animate: true,
+          duration: 1.2
+        });
+      } else if (selectedState.center) {
+        map.flyTo(selectedState.center, selectedState.zoom || 8, {
+          animate: true,
+          duration: 1.2
+        });
+      }
     } else {
-      // Pan-India Overview (Entire country visible with all plotted claims)
+      // Pan-India Overview (Entire country visible)
       map.flyTo([22.5, 79.5], 5, {
         animate: true,
         duration: 1.2
       });
     }
-  }, [selectedState, resetTrigger, activeClaim, map]);
+  }, [selectedState, resetTrigger, activeClaim, map, statesGeoJson]);
 
   return null;
 }
@@ -192,28 +233,88 @@ export default function WebGISMap({
     return true;
   });
 
-  // State Boundary Styling matching user's reference image and active theme
+  // Dynamic Mask: When a state is selected, mask out everything except that state
+  const activeMaskGeoJson = useMemo(() => {
+    if (!selectedState) {
+      return indiaMaskGeoJson;
+    }
+
+    const stateFeature = statesGeoJson?.features?.find(f => 
+      f.id === selectedState.id || 
+      f.properties?.id === selectedState.id || 
+      f.properties?.code === selectedState.code ||
+      (selectedState.name && f.properties?.name && selectedState.name.toLowerCase() === f.properties.name.toLowerCase())
+    );
+
+    if (!stateFeature || !stateFeature.geometry) {
+      return indiaMaskGeoJson;
+    }
+
+    const worldRing = [
+      [-180.0, 85.0],
+      [180.0, 85.0],
+      [180.0, -85.0],
+      [-180.0, -85.0],
+      [-180.0, 85.0]
+    ];
+
+    let stateHoles = [];
+    if (stateFeature.geometry.type === 'Polygon') {
+      stateHoles = [stateFeature.geometry.coordinates[0]];
+    } else if (stateFeature.geometry.type === 'MultiPolygon') {
+      stateHoles = stateFeature.geometry.coordinates.map(p => p[0]);
+    }
+
+    return {
+      type: "FeatureCollection",
+      features: [
+        {
+          type: "Feature",
+          properties: { name: `Mask outside ${selectedState.name}` },
+          geometry: {
+            type: "Polygon",
+            coordinates: [worldRing, ...stateHoles]
+          }
+        }
+      ]
+    };
+  }, [selectedState, statesGeoJson]);
+
+  // State Boundary Styling: only the selected state is outlined when active
   const getStateStyle = (feature) => {
     const isSelected = selectedState && (
       selectedState.id === feature.id || 
       selectedState.id === feature.properties?.id ||
-      selectedState.code === feature.properties?.code
+      selectedState.code === feature.properties?.code ||
+      (selectedState.name && feature.properties?.name && selectedState.name.toLowerCase() === feature.properties.name.toLowerCase())
     );
+
+    // If a state is selected, completely hide other state borders so only the chosen state is on screen
+    if (selectedState && !isSelected) {
+      return {
+        fillColor: 'transparent',
+        fillOpacity: 0,
+        color: 'transparent',
+        weight: 0,
+        opacity: 0,
+      };
+    }
+
+    if (isSelected) {
+      return {
+        fillColor: 'transparent',
+        fillOpacity: 0,
+        color: t.accent,
+        weight: 2.8,
+        opacity: 1.0,
+      };
+    }
+
     const isHovered = hoveredState && (
       hoveredState.id === feature.id ||
       hoveredState.id === feature.properties?.id ||
       hoveredState.code === feature.properties?.code
     );
-
-    if (isSelected) {
-      return {
-        fillColor: t.accent,
-        fillOpacity: 0.16,
-        color: '#ffffff',
-        weight: 2.2,
-        opacity: 1.0,
-      };
-    }
 
     if (isHovered) {
       return {
@@ -369,23 +470,22 @@ export default function WebGISMap({
           activeClaim={activeClaim}
           onMapReady={setMapInstance}
           onZoomChange={setCurrentZoom}
+          statesGeoJson={statesGeoJson}
         />
 
-        {/* Primary Basemap Tile Layer - Esri World Imagery restricted strictly to India */}
+        {/* Primary Basemap Tile Layer - Esri World Imagery Satellite (Smooth zoom, zero glitches) */}
         <TileLayer
-          key={`${baseLayer}-${t.maskColor}`}
+          key={baseLayer}
           attribution={basemapTiles[baseLayer].attribution}
           url={basemapTiles[baseLayer].url}
           maxZoom={19}
-          minZoom={4.2}
           noWrap={true}
-          bounds={[ [4.0, 65.0], [38.5, 99.5] ]}
         />
 
-        {/* World Inverted Mask: Mask non-India territories with theme background */}
+        {/* Dynamic Inverted Mask: Smoothly isolates selected state or entire India */}
         <GeoJSON
-          key={`india-inverted-mask-${t.maskColor}`}
-          data={indiaMaskGeoJson}
+          key={`mask-${selectedState ? (selectedState.id || selectedState.code || selectedState.name) : 'all-india'}-${t.maskColor}`}
+          data={activeMaskGeoJson}
           style={{
             fillColor: t.maskColor,
             fillOpacity: 1.0,
@@ -396,9 +496,9 @@ export default function WebGISMap({
           interactive={false}
         />
 
-        {/* India States Boundary Layer: Delicate tan/beige outlines */}
+        {/* India States Boundary Layer */}
         <GeoJSON
-          key={`states-geojson-${selectedState ? selectedState.id : 'all'}`}
+          key={`states-geojson-${selectedState ? (selectedState.id || selectedState.code) : 'all'}-${t.maskColor}`}
           ref={geoJsonRef}
           data={statesGeoJson}
           style={getStateStyle}
@@ -573,8 +673,8 @@ export default function WebGISMap({
           );
         })}
 
-        {/* Lakshadweep Islands Archipelago Markers & Interaction */}
-        {LAKSHADWEEP_ISLANDS.map((isl) => {
+        {/* Lakshadweep Islands Archipelago Markers (Visible in All-India or when Lakshadweep is selected) */}
+        {(!selectedState || selectedState.code === 'LD' || selectedState.id === 'INLD') && LAKSHADWEEP_ISLANDS.map((isl) => {
           const isLdSelected = selectedState && (selectedState.id === 'INLD' || selectedState.code === 'LD');
           return (
             <React.Fragment key={isl.name}>
@@ -692,35 +792,39 @@ export default function WebGISMap({
         </div>
       </div>
 
-      {/* Bottom-Left Information Pill matching user's image EXACTLY */}
-      <div className="absolute bottom-6 left-6 z-[1000] pointer-events-none select-none">
+      {/* Bottom-Left Information Pill */}
+      <div className="absolute bottom-6 left-6 z-[1000] select-none">
         <div 
-          className="rounded-full px-4 py-1.5 text-xs font-mono shadow-2xl tracking-wide flex items-center gap-2 border backdrop-blur-md"
+          onClick={selectedState ? onResetAllIndia : undefined}
+          className={`rounded-full px-4 py-1.5 text-xs font-mono shadow-2xl tracking-wide flex items-center gap-2 border backdrop-blur-md transition ${
+            selectedState ? 'cursor-pointer hover:bg-white/10' : 'pointer-events-none'
+          }`}
           style={{
             backgroundColor: t.pillBg,
             borderColor: t.pillBorder,
             color: t.textSecondary
           }}
+          title={selectedState ? "Click to return to All-India overview" : undefined}
         >
           {hoveredState ? (
             <>
               <span className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: t.accent }} />
               <span className="font-semibold text-white">{hoveredState.name}</span>
               <span style={{ color: t.textMuted }}>•</span>
-              <span>Click to enter state view</span>
+              <span>Click to view state</span>
             </>
           ) : selectedState ? (
             <>
               <span className="w-2 h-2 rounded-full" style={{ backgroundColor: t.accent }} />
               <span className="font-semibold text-white">{selectedState.name}</span>
               <span style={{ color: t.textMuted }}>•</span>
-              <span>Click to enter state view</span>
+              <span className="underline decoration-dotted">Click to return to All-India view</span>
             </>
           ) : (
             <>
               <span>Hover a state to view details</span>
               <span style={{ color: t.textMuted }}>•</span>
-              <span>Click to enter state view</span>
+              <span>Click to view state</span>
             </>
           )}
         </div>
